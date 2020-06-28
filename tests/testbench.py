@@ -23,7 +23,7 @@ class Testbench:
     def __init__(self, top_module_file, test_name, clk_port_name="i_clk", params={}, verilog_path=[], verilator_args=["-O3"], extra_cflags="-O3", tick_callbacks=[], quiet=True):
         self.sim = pyverilator.PyVerilator.build(
             top_module_file,
-            verilog_path=[".."] + verilog_path,
+            verilog_path=["..", "../*/", "../**/"] + verilog_path,
             verilator_args=verilator_args,
             extra_cflags=extra_cflags,
             params=params,

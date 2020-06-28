@@ -1,4 +1,4 @@
-VERILOG_TOP=top.sv
+VERILOG_TOP=top
 CONSTRAINTS_FILE=constraints.lpf
 FORMAL_FILE=formal.sby
 
@@ -27,7 +27,7 @@ PYTHON_SOURCES=$(wildcard *.py) $(wildcard **/*.py)
 yosys: $(JSON_FILE)
 $(JSON_FILE): $(VERILOG_SOURCES)
 	mkdir -p build
-	yosys $(YOSYS_FLAGS) -p 'synth_ecp5 -json $(JSON_FILE)' $(VERILOG_TOP) > build/yosys.log
+	yosys $(YOSYS_FLAGS) -p 'read_verilog -sv $(VERILOG_SOURCES); synth_ecp5 -json $(JSON_FILE) -top $(VERILOG_TOP)' > build/yosys.log
 
 # Run place-and-route
 .PHONY: nextpnr
