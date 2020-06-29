@@ -8,8 +8,6 @@ NEXTPNR_FLAGS=
 ECPPACK_FLAGS=--compress
 TARGET=
 
-COCOTB_SIM=verilator
-
 JSON_FILE=build/synthesis.json
 CONFIG_FILE=build/pnr_out.config
 BITSTREAM_FILE=build/bitstream.bit
@@ -73,32 +71,9 @@ reset-remote:
 .PHONY: test
 test: $(VERILOG_SOURCES) $(PYTHON_SOURCES)
 	-rm -r sim_build/
-	sv2v $(VERILOG_SOURCES) --exclude=assert > build/top.v
+	mkdir -p build
+	sv2v $(VERILOG_SOURCES) --exclude=assert --define=VERIFICATION --define=VERILATOR > build/top.v
 	VERILATOR_TRACE=1 python3 test.py $(TARGET)
-
-###############################################
-# Formal Verification
-###############################################
-
-.PHONY: formal
-.ONESHELL: formal
-formal: $(VERILOG_SOURCES)
-	mkdir -p build/
-	sv2v $(VERILOG_SOURCES) --define=FORMAL --exclude=assert > build/top.v
-	cd formal/riscv-formal/cores/cpu-1
-	-rm -r checks
-	python3 ../../checks/genchecks.py
-	make -C checks/ $(TARGET)
-
-.PHONY: formal-list
-.ONESHELL: formal-list
-formal-list: $(VERILOG_SOURCES)
-	mkdir -p build/
-	sv2v $(VERILOG_SOURCES) --exclude=assert > build/top.v
-	cd formal/riscv-formal/cores/cpu-1
-	-rm -r checks
-	python3 ../../checks/genchecks.py
-	ls -1 checks | grep sby
 
 ###############################################
 # Misc utilities

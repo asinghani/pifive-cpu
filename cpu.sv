@@ -1,25 +1,9 @@
 `default_nettype none
 
-`define VERIFICATION
-
-`ifdef FORMAL
-
-`define RISCV_FORMAL
-`define RISCV_FORMAL_NRET 1
-`define RISCV_FORMAL_XLEN 32
-`define RISCV_FORMAL_ILEN 32
-`define RISCV_FORMAL_ALIGNED_MEM
-`define RISCV_FORMAL_VALIDADDR(addr) ((addr >= 32'h40000000) && (addr < 32'h40001000))
-`define RISCV_FORMAL_BLACKBOX_REGS
-
-`endif
-
 module cpu # (
     parameter BROM_SIZE = 512,
     parameter BROM_INIT = ""
 ) (
-    input wire i_clk,
-
     output wire [31:0] o_gpio_out,
     input wire [31:0] i_gpio_in,
 
@@ -27,34 +11,7 @@ module cpu # (
     output wire [31:0] d_regs_out[0:31],
 `endif
 
-    // Formal verification
-`ifdef FORMAL
-    output wire rvfi_valid,
-    output reg [63:0] rvfi_order = 0,
-    output wire [31:0] rvfi_insn,
-    output wire rvfi_trap,
-    output wire rvfi_halt,
-    output wire rvfi_intr,
-    output wire [1:0] rvfi_mode,
-    output wire [1:0] rvfi_ixl,
-
-    output wire [4:0] rvfi_rs1_addr,
-    output wire [4:0] rvfi_rs2_addr,
-    output wire [31:0] rvfi_rs1_rdata,
-    output wire [31:0] rvfi_rs2_rdata,
-    output wire [4:0] rvfi_rd_addr,
-    output wire [31:0] rvfi_rd_wdata,
-
-    output wire [31:0] rvfi_pc_rdata,
-    output wire [31:0] rvfi_pc_wdata,
-
-    output wire [31:0] rvfi_mem_addr,
-    output wire [3:0] rvfi_mem_rmask,
-    output wire [3:0] rvfi_mem_wmask,
-    output wire [31:0] rvfi_mem_rdata,
-    output wire [31:0] rvfi_mem_wdata
-
-`endif
+    input wire i_clk
 );
 
 wire take_branch;
@@ -74,6 +31,7 @@ wire [31:0] data_wdata;
 wire [1:0] data_width;
 wire data_we;
 wire data_zeroextend;
+
 memory_controller #(
     .BROM_INIT(BROM_INIT),
     .BROM_SIZE(BROM_SIZE)
@@ -185,69 +143,5 @@ always_ff @(posedge i_clk) begin
 
     pc <= next_pc;
 end
-
-
-// Formal verification
-`ifdef FORMAL
-
-    wire unaligned_access = ((instr_2.loadstore[1:0] == 2) && (alu_last[0] != 0)) | ((instr_2.loadstore[1:0] == 3) && (alu_last[1:0] != 0));
-
-    assign rvfi_insn = instr_2.inst_raw[31:0];
-    assign rvfi_valid = instr_2.inst_raw[32];
-    assign rvfi_trap = instr_2.inst_invalid | unaligned_access;
-
-    assign rvfi_halt = 0;
-    assign rvfi_intr = 0;
-
-    assign rvfi_rs1_addr = instr_2.rs1_addr;
-    assign rvfi_rs2_addr = instr_2.rs2_addr;
-
-    reg [4:0] past_rs1;
-    reg [4:0] past_rs2;
-    reg [31:0] past_wdata;
-
-    always_ff @(posedge i_clk) begin
-        past_rs1 <= $past(rs1);
-        past_rs2 <= $past(rs2);
-        past_wdata <= $past(data_wdata);
-    end
-
-    assign rvfi_rs1_rdata = past_rs1;
-    assign rvfi_rs2_rdata = past_rs2;
-
-    assign rvfi_rd_addr = instr_2.rd_addr;
-    assign rvfi_rd_wdata = instr_2.rd_addr == 0) ? 0 : rd_write;
-
-    assign rvfi_pc_rdata = instr_2.pc;
-    assign rvfi_pc_wdata = instr_1.pc;
-
-    assign rvfi_mem_addr = alu_last;
-    assign rvfi_mem_rdata = data_rdata;
-    assign rvfi_mem_wdata = past_wdata;
-
-    reg [3:0] mask = 0;
-
-    // Bit mask
-    always_comb begin
-        case(instr_2.loadstore)
-            1: mask[(alu_last[1:0] * 8 + 7):(alu_last[1:0] * 8)] = 8'hFF;
-            2: mask[(alu_last[1] * 16 + 15):(alu_last[1] * 16)] = 16'hFFFF;
-            default: mask = 32'hFFFFFFFF;
-        endcase
-    end
-
-    assign rvfi_mem_wmask = (instr_2.loadstore > 4) ? mask : 0;
-    assign rvfi_mem_rmask = ((instr_2.loadstore > 0) && (instr_2.loadstore < 4)) ? mask : 0;
-
-    // When valid, increment order - the new order will be used
-    // on the NEXT valid instruction
-    always_ff @(posedge i_clk) begin
-        if (rvfi_valid) begin
-            rvfi_order <= rvfi_order + 1;
-        end
-    end
-
-
-`endif
 
 endmodule

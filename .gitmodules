@@ -1,3 +1,0 @@
-[submodule "formal/riscv-formal"]
-	path = formal/riscv-formal
-	url = https://github.com/asinghani/riscv-formal
