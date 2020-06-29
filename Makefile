@@ -15,7 +15,7 @@ JSON_FILE=build/synthesis.json
 CONFIG_FILE=build/pnr_out.config
 BITSTREAM_FILE=build/bitstream.bit
 
-VERILOG_SOURCES=$(wildcard *.v) $(wildcard *.sv) $(wildcard **/*.v) $(wildcard **/*.sv)
+VERILOG_SOURCES=$(shell find . -name "*.v") $(shell find . -name "*.sv")
 PYTHON_SOURCES=$(wildcard *.py) $(wildcard **/*.py)
 
 ###############################################
@@ -27,7 +27,8 @@ PYTHON_SOURCES=$(wildcard *.py) $(wildcard **/*.py)
 yosys: $(JSON_FILE)
 $(JSON_FILE): $(VERILOG_SOURCES)
 	mkdir -p build
-	yosys $(YOSYS_FLAGS) -p 'read_verilog -sv $(VERILOG_SOURCES); synth_ecp5 -json $(JSON_FILE) -top $(VERILOG_TOP)' > build/yosys.log
+	sv2v $(VERILOG_SOURCES) --exclude=assert > build/top.v
+	yosys $(YOSYS_FLAGS) -p 'read_verilog -sv build/top.v; synth_ecp5 -json $(JSON_FILE) -top $(VERILOG_TOP)' > build/yosys.log
 
 # Run place-and-route
 .PHONY: nextpnr
