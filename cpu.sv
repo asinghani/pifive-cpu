@@ -1,6 +1,6 @@
 `default_nettype none
 
-`define FORMAL
+`define VERIFICATION
 
 `ifdef FORMAL
 
@@ -10,14 +10,22 @@
 `define RISCV_FORMAL_ILEN 32
 `define RISCV_FORMAL_ALIGNED_MEM
 `define RISCV_FORMAL_VALIDADDR(addr) ((addr >= 32'h40000000) && (addr < 32'h40001000))
+`define RISCV_FORMAL_BLACKBOX_REGS
 
 `endif
 
-module cpu (
+module cpu # (
+    parameter BROM_SIZE = 512,
+    parameter BROM_INIT = ""
+) (
     input wire i_clk,
 
     output wire [31:0] o_gpio_out,
     input wire [31:0] i_gpio_in,
+
+`ifdef VERIFICATION
+    output wire [31:0] d_regs_out[0:31],
+`endif
 
     // Formal verification
 `ifdef FORMAL
@@ -67,10 +75,8 @@ wire [1:0] data_width;
 wire data_we;
 wire data_zeroextend;
 memory_controller #(
-`ifndef FORMAL
-    .BROM_INIT("init.txt"),
-`endif
-    .BROM_SIZE(512)
+    .BROM_INIT(BROM_INIT),
+    .BROM_SIZE(BROM_SIZE)
 ) mem_controller (
     .i_inst_addr(next_pc),
     .o_inst_data(raw_instr),
@@ -90,7 +96,7 @@ memory_controller #(
 
 decode decode (
     .i_instr(raw_instr),
-    .i_pc(0),
+    .i_pc(pc),
     .o_out(instr_0)
 );
 
@@ -112,6 +118,11 @@ regfile regfile (
     .o_rs1_data(rs1_read),
     .i_rs2_addr(instr_1.rs2_addr),
     .o_rs2_data(rs2_read),
+
+`ifdef VERIFICATION
+    .d_regs_out(d_regs_out),
+`endif
+
     .i_clk(i_clk)
 );
 
@@ -142,9 +153,9 @@ instruction_t instr_2;
 
 assign data_wdata = rs2;
 assign data_addr = alu_out;
-assign data_width = instr_2.loadstore[1:0];
-assign data_we = (instr_2.loadstore > 4);
-assign data_zeroextend = instr_2.load_zeroextend;
+assign data_width = instr_1.loadstore[1:0];
+assign data_we = (instr_1.loadstore > 4);
+assign data_zeroextend = instr_1.load_zeroextend;
 
 always_comb begin
     if (instr_2.jump) begin
@@ -205,7 +216,7 @@ end
     assign rvfi_rs2_rdata = past_rs2;
 
     assign rvfi_rd_addr = instr_2.rd_addr;
-    assign rvfi_rd_wdata = (instr_2.rd_addr == 0) ? 0 : rd_write;
+    assign rvfi_rd_wdata = instr_2.rd_addr == 0) ? 0 : rd_write;
 
     assign rvfi_pc_rdata = instr_2.pc;
     assign rvfi_pc_wdata = instr_1.pc;

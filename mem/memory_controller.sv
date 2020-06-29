@@ -41,8 +41,12 @@ module memory_controller
     input wire i_clk
 );
 
+reg valid = 0;
+
 reg [31:0] r_inst_addr = {BROM_BASE, 28'b0};
 reg [31:0] r_data_addr = 0;
+
+reg [1:0] r_data_width = 0;
 
 wire [31:0] brom_data;
 rom32 # (
@@ -84,20 +88,25 @@ bram32 # (
 reg [31:0] data_data;
 
 always_comb begin
-    case (r_inst_addr[31:28])
-        BROM_BASE: o_inst_data = brom_data;
-        IMEM_BASE: o_inst_data = imem_data;
-        default: o_inst_data = 0;
-    endcase
+    if (valid) begin
+        case (r_inst_addr[31:28])
+            BROM_BASE: o_inst_data = brom_data;
+            IMEM_BASE: o_inst_data = imem_data;
+            default: o_inst_data = 0;
+        endcase
+    end
+    else begin
+        o_inst_data = 32'h33; // RISC-V no-op
+    end
 
     case (r_data_addr[31:28])
         IMEM_BASE: data_data = (r_inst_addr[31:28] == BROM_BASE) ? imem_data : 0;
         DMEM_BASE: data_data = dmem_data;
         PERI_BASE: begin
-            if (r_data_addr[27:0] == 0) begin
+            if (r_data_addr[27:2] == 0) begin
                 data_data = o_gpio_out;
             end
-            else if (r_data_addr[27:0] == 4) begin
+            else if (r_data_addr[27:2] == 1) begin
                 data_data = i_gpio_in;
             end
             else begin
@@ -114,25 +123,56 @@ always_comb begin
     case (i_data_width)
         // Byte
         1: begin
+            if(i_data_addr[1:0] == 2'b00) begin
+                wr_subaddr = 4;
+            end
+            else if(i_data_addr[1:0] == 2'b01) begin
+                wr_subaddr = 5;
+            end
+            else if(i_data_addr[1:0] == 2'b10) begin
+                wr_subaddr = 6;
+            end
+            else begin
+                wr_subaddr = 7;
+            end
+        end
+
+        // Half-Word
+        2: begin
+            if(i_data_addr[1] == 0) begin
+                wr_subaddr = 2;
+            end
+            else begin
+                wr_subaddr = 3;
+            end
+        end
+
+        // Word
+        default: begin
+            wr_subaddr = 1;
+        end
+    endcase
+end
+
+always_comb begin
+    case (r_data_width)
+        // Byte
+        1: begin
             if(r_data_addr[1:0] == 2'b00) begin
                 ext = i_data_zeroextend ? 0 : data_data[7];
                 o_data_data = {{24{ext}}, data_data[7:0]};
-                wr_subaddr = 4;
             end
-            if(r_data_addr[1:0] == 2'b01) begin
+            else if(r_data_addr[1:0] == 2'b01) begin
                 ext = i_data_zeroextend ? 0 : data_data[15];
                 o_data_data = {{24{ext}}, data_data[15:8]};
-                wr_subaddr = 5;
             end
-            if(r_data_addr[1:0] == 2'b10) begin
+            else if(r_data_addr[1:0] == 2'b10) begin
                 ext = i_data_zeroextend ? 0 : data_data[23];
                 o_data_data = {{24{ext}}, data_data[23:16]};
-                wr_subaddr = 6;
             end
             else begin
                 ext = i_data_zeroextend ? 0 : data_data[31];
                 o_data_data = {{24{ext}}, data_data[31:24]};
-                wr_subaddr = 7;
             end
         end
 
@@ -141,43 +181,43 @@ always_comb begin
             if(r_data_addr[1] == 0) begin
                 ext = i_data_zeroextend ? 0 : data_data[15];
                 o_data_data = {{16{ext}}, data_data[15:0]};
-                wr_subaddr = 2;
             end
             else begin
                 ext = i_data_zeroextend ? 0 : data_data[31];
                 o_data_data = {{16{ext}}, data_data[31:16]};
-                wr_subaddr = 3;
             end
         end
 
         // Word
         default: begin
             o_data_data = data_data;
-            wr_subaddr = 1;
         end
     endcase
 end
 
 always_ff @(posedge i_clk) begin 
     r_data_addr <= i_data_addr;
+    r_data_width <= i_data_width;
     r_inst_addr <= i_inst_addr;
 
+    valid <= 1;
+
     if (i_data_addr[31:28] == PERI_BASE) begin
-        if (i_data_we && (i_data_addr[27:0] == 0)) begin
+        if (i_data_we && (i_data_addr[27:2] == 0)) begin
             case (i_data_width)
                 // Byte
                 1: begin
                     if(i_data_addr[1:0] == 2'b00) begin
                         o_gpio_out[7:0] <= i_data_data[7:0];
                     end
-                    if(i_data_addr[1:0] == 2'b01) begin
-                        o_gpio_out[15:8] <= i_data_data[15:8];
+                    else if(i_data_addr[1:0] == 2'b01) begin
+                        o_gpio_out[15:8] <= i_data_data[7:0];
                     end
-                    if(i_data_addr[1:0] == 2'b10) begin
-                        o_gpio_out[23:16] <= i_data_data[23:16];
+                    else if(i_data_addr[1:0] == 2'b10) begin
+                        o_gpio_out[23:16] <= i_data_data[7:0];
                     end
                     else begin
-                        o_gpio_out[31:24] <= i_data_data[31:24];
+                        o_gpio_out[31:24] <= i_data_data[7:0];
                     end
                 end
 
@@ -187,7 +227,7 @@ always_ff @(posedge i_clk) begin
                         o_gpio_out[15:0] <= i_data_data[15:0];
                     end
                     else begin
-                        o_gpio_out[31:16] <= i_data_data[31:16];
+                        o_gpio_out[31:16] <= i_data_data[15:0];
                     end
                 end
 

@@ -24,6 +24,7 @@ reg invalid_opcode;
 assign o_out.inst_invalid = invalid_opcode;
 
 always_comb begin
+    invalid_opcode = 0;
     o_out.rs1_pc = ((opcode == `OPCODE_BRANCH) | (opcode == `OPCODE_JAL) |
         (opcode == `OPCODE_JALR) | (opcode == `OPCODE_AUIPC));
     o_out.rs2_imm = ((opcode != `OPCODE_ALU));
@@ -35,7 +36,7 @@ always_comb begin
     o_out.load_zeroextend = funct3[2];
     
     if ((opcode == `OPCODE_LOAD) | (opcode == `OPCODE_STORE)) begin
-        o_out.loadstore = funct3[1:0] + 1;
+        o_out.loadstore = {(opcode == `OPCODE_STORE), funct3[1:0] + 1'b1};
     end
     else begin
         o_out.loadstore = 0;

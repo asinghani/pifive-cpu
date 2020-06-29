@@ -84,7 +84,7 @@ test: $(VERILOG_SOURCES) $(PYTHON_SOURCES)
 .ONESHELL: formal
 formal: $(VERILOG_SOURCES)
 	mkdir -p build/
-	sv2v $(VERILOG_SOURCES) --exclude=assert > build/top.v
+	sv2v $(VERILOG_SOURCES) --define=FORMAL --exclude=assert > build/top.v
 	cd formal/riscv-formal/cores/cpu-1
 	-rm -r checks
 	python3 ../../checks/genchecks.py

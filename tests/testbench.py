@@ -49,6 +49,7 @@ class Testbench:
         self.time = 10
 
         self.dut = self.sim.io
+        self.internals = self.sim.internals
         self._clk = self.write_port(clk_port_name)
 
         try:

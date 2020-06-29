@@ -10,8 +10,12 @@ module regfile (
     input wire [4:0] i_rs2_addr,
     output wire [31:0] o_rs2_data,
 
+    output wire [31:0] d_regs_out[0:31],
+
     input wire i_clk
 );
+
+assign d_regs_out = registers;
 
 // Reg 0 is not used but kept for consistency
 // (should be optimized out at synthesis-time)
