@@ -7,13 +7,13 @@ module barrel_shifter (
     input wire [4:0] i_amt,
     input wire i_dir, // 0 = left, 1 = right
     input wire i_arith, // 0 = logical, 1 = arithmetic
-    output wire [31:0] o_out,
+    output reg [31:0] o_out,
 
     input wire i_clk
 );
 
-wire [31:0] lt_shifts[0:31];
-wire [31:0] rt_shifts[0:31];
+reg [31:0] lt_shifts[0:31];
+reg [31:0] rt_shifts[0:31];
 
 integer ind;
 always_comb begin

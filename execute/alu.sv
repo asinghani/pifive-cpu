@@ -13,8 +13,8 @@ module alu (
     input wire i_clk
 );
 
-wire sp; // Differentiate ADD/SUB, SRL/SRA
-wire [2:0] op;
+reg sp; // Differentiate ADD/SUB, SRL/SRA
+reg [2:0] op;
 
 wire [31:0] shift_out;
 barrel_shifter shifter (

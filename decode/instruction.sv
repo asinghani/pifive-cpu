@@ -3,6 +3,10 @@
 // Wrapper interface to represent a decoded instruction
 
 typedef struct packed {
+    // Raw instruction (for verification only)
+    // MSB = valid?
+    logic [32:0] inst_raw;
+
     // Trigger invalid-instruction trap
     logic inst_invalid;
 

@@ -30,6 +30,6 @@ decode decode (
     .i_clk(i_clk)
 );
 
-assign led = {inst2.rd[3:0], inst.rd[3:0]};
+assign led = {inst2.rd_addr[3:0], inst.rd_addr[3:0]};
 
 endmodule
