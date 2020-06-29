@@ -9,6 +9,8 @@
 """
 import pyverilator
 import ctypes
+import os
+import glob
 
 def asserteq(x, expected, msg=None):
     if x != expected:
@@ -20,10 +22,17 @@ class Testbench:
     """
         Compile and set up the verilator testbench.
     """
-    def __init__(self, top_module_file, test_name, clk_port_name="i_clk", params={}, verilog_path=[], verilator_args=["-O3"], extra_cflags="-O3", tick_callbacks=[], quiet=True):
+    def __init__(self, top_module_file, test_name, clk_port_name="i_clk", params={}, verilog_path=[], verilator_args=["-O3"], extra_cflags="-O3", tick_callbacks=[], quiet=True, include_all_subdirs=True):
+
+        if include_all_subdirs:
+            subdirs = [_dir for _dir in glob.iglob("../**", recursive=True) if (os.path.isdir(_dir) and ("sim_build" not in _dir) and (".git" not in _dir))]
+        else:
+            subdirs = []
+
+
         self.sim = pyverilator.PyVerilator.build(
             top_module_file,
-            verilog_path=["..", "../*/", "../**/"] + verilog_path,
+            verilog_path=[".."] + subdirs + verilog_path,
             verilator_args=verilator_args,
             extra_cflags=extra_cflags,
             params=params,
@@ -73,7 +82,7 @@ class Testbench:
     """
         Tick the clock forward `n` ticks (default 1).
         If `cb` is specified, it will be called before each tick.
-    """ 
+    """
     def tick(self, n=1, cb=None):
         if cb is None:
             for i in range(n):
@@ -104,3 +113,9 @@ class Testbench:
                     x()
 
         self.sim.flush_vcd_trace()
+
+    """
+        Force combinational logic to settle
+    """
+    def eval(self):
+        self.sim.eval()

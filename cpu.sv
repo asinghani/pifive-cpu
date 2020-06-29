@@ -8,10 +8,15 @@
 `define RISCV_FORMAL_ILEN 32
 `define RISCV_FORMAL_ALIGNED_MEM
 
-`endif`
+`endif
 
 module cpu (
+`ifdef FORMAL
     `rvformal_rand_reg input wire [31:0] i_instr,
+`else
+    input wire [31:0] i_instr,
+`endif
+
     input wire i_clk,
 
     // Formal verification
