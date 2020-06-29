@@ -7,9 +7,7 @@ module barrel_shifter (
     input wire [4:0] i_amt,
     input wire i_dir, // 0 = left, 1 = right
     input wire i_arith, // 0 = logical, 1 = arithmetic
-    output reg [31:0] o_out,
-
-    input wire i_clk
+    output reg [31:0] o_out
 );
 
 reg [31:0] lt_shifts[0:31];

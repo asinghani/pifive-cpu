@@ -9,16 +9,14 @@ module decode (
     input wire [31:0] i_pc,
 
     // Decoded instruction
-    output instruction_t o_out,
-
-    input wire i_clk
+    output instruction_t o_out
 );
 
 `ifdef FORMAL
     assign o_out.inst_raw = {1'b1, i_instr};
 `endif
 
-wire opcode = i_instr[6:0];
+wire [6:0] opcode = i_instr[6:0];
 wire [6:0] funct7 = i_instr[31:25];
 wire [2:0] funct3 = i_instr[14:12];
 
@@ -53,12 +51,15 @@ always_comb begin
     o_out.imm = 0;
 
     case (i_instr[6:0])
-        `OPCODE_ALU: o_out.alu_op = {funct7[30], funct3};
-        `OPCODE_ALUIMM: o_out.imm = {{20{i_instr[31]}}, i_instr[31:20]};
+        `OPCODE_ALU: o_out.alu_op = {funct7[5], funct3};
+        `OPCODE_ALUIMM: begin
+            o_out.alu_op = {funct7[5], funct3};
+            o_out.imm = {{20{i_instr[31]}}, i_instr[31:20]};
+        end
         `OPCODE_LOAD: o_out.imm = {{20{i_instr[31]}}, i_instr[31:20]};
         `OPCODE_STORE: o_out.imm = {{20{i_instr[31]}}, i_instr[31:25], i_instr[11:7]};
-        `OPCODE_BRANCH: o_out.imm = {{19{i_instr[31]}}, i_instr[31], i_instr[7], i_instr[30:25], i_instr[11:6], 1'b0};
-        `OPCODE_JAL: o_out.imm = {{12{i_instr[31]}}, i_instr[31], i_instr[19:12], i_instr[20], i_instr[30:21], 1'b0};
+        `OPCODE_BRANCH: o_out.imm = {{19{i_instr[31]}}, i_instr[31], i_instr[7], i_instr[30:25], i_instr[11:8], 1'b0};
+        `OPCODE_JAL: o_out.imm = {{11{i_instr[31]}}, i_instr[31], i_instr[19:12], i_instr[20], i_instr[30:21], 1'b0};
         `OPCODE_JALR: o_out.imm = {{20{i_instr[31]}}, i_instr[31:20]};
         `OPCODE_LUI: o_out.imm = {i_instr[31:12], 12'b0};
         `OPCODE_AUIPC: o_out.imm = {i_instr[31:12], 12'b0};
