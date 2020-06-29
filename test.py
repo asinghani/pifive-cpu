@@ -8,7 +8,7 @@ WIDTH = 80
 TEST_DIR = "sim_build"
 TEST_PACKAGE = "tests"
 
-TESTS = ["test_decode"]
+TESTS = ["test_basic"]
 
 if len(sys.argv) > 1:
     targets = sys.argv[1:]

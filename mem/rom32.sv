@@ -26,6 +26,15 @@ initial begin
     /* verilator lint_on WIDTH */
 end
 
+integer i;
+initial begin
+    `ifdef FORMAL
+        for(i = 0; i < DEPTH; i = i + 1) begin
+            //ram[i] = 36'hABCDEF123;
+        end
+    `endif
+end
+
 reg [(ADDR_WIDTH - 1):0] r_addr;
 
 // Clocked read

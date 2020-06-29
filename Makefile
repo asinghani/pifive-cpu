@@ -73,7 +73,8 @@ reset-remote:
 .PHONY: test
 test: $(VERILOG_SOURCES) $(PYTHON_SOURCES)
 	-rm -r sim_build/
-	SIM=$(COCOTB_SIM) COCOTB_REDUCED_LOG_FMT=1 VERILATOR_TRACE=1 python3 test.py $(TARGET)
+	sv2v $(VERILOG_SOURCES) --exclude=assert > build/top.v
+	VERILATOR_TRACE=1 python3 test.py $(TARGET)
 
 ###############################################
 # Formal Verification

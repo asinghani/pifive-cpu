@@ -22,7 +22,7 @@ class Testbench:
     """
         Compile and set up the verilator testbench.
     """
-    def __init__(self, top_module_file, test_name, clk_port_name="i_clk", params={}, verilog_path=[], verilator_args=["-O3"], extra_cflags="-O3", tick_callbacks=[], quiet=True, include_all_subdirs=True):
+    def __init__(self, top_module_file, test_name, clk_port_name="i_clk", params={}, verilog_path=[], verilator_args=["-O3"], extra_cflags="-O3", tick_callbacks=[], quiet=True, include_all_subdirs=True, verilog_module_name=None):
 
         if include_all_subdirs:
             subdirs = [_dir for _dir in glob.iglob("../**", recursive=True) if (os.path.isdir(_dir) and ("sim_build" not in _dir) and (".git" not in _dir))]
@@ -36,7 +36,8 @@ class Testbench:
             verilator_args=verilator_args,
             extra_cflags=extra_cflags,
             params=params,
-            quiet=quiet
+            quiet=quiet,
+            verilog_module_name=verilog_module_name
         )
 
         self.sim.auto_eval = False

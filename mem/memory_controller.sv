@@ -41,6 +41,9 @@ module memory_controller
     input wire i_clk
 );
 
+reg [31:0] r_inst_addr = {BROM_BASE, 28'b0};
+reg [31:0] r_data_addr = 0;
+
 wire [31:0] brom_data;
 rom32 # (
     .DEPTH(BROM_SIZE),
@@ -81,20 +84,20 @@ bram32 # (
 reg [31:0] data_data;
 
 always_comb begin
-    case (i_inst_addr[31:28])
+    case (r_inst_addr[31:28])
         BROM_BASE: o_inst_data = brom_data;
         IMEM_BASE: o_inst_data = imem_data;
         default: o_inst_data = 0;
     endcase
 
-    case (i_data_addr[31:28])
-        IMEM_BASE: data_data = (i_inst_addr[31:28] == BROM_BASE) ? imem_data : 0;
+    case (r_data_addr[31:28])
+        IMEM_BASE: data_data = (r_inst_addr[31:28] == BROM_BASE) ? imem_data : 0;
         DMEM_BASE: data_data = dmem_data;
         PERI_BASE: begin
-            if (i_data_addr[27:0] == 0) begin
+            if (r_data_addr[27:0] == 0) begin
                 data_data = o_gpio_out;
             end
-            else if (i_data_addr[27:0] == 4) begin
+            else if (r_data_addr[27:0] == 4) begin
                 data_data = i_gpio_in;
             end
             else begin
@@ -111,17 +114,17 @@ always_comb begin
     case (i_data_width)
         // Byte
         1: begin
-            if(i_data_addr[1:0] == 2'b00) begin
+            if(r_data_addr[1:0] == 2'b00) begin
                 ext = i_data_zeroextend ? 0 : data_data[7];
                 o_data_data = {{24{ext}}, data_data[7:0]};
                 wr_subaddr = 4;
             end
-            if(i_data_addr[1:0] == 2'b01) begin
+            if(r_data_addr[1:0] == 2'b01) begin
                 ext = i_data_zeroextend ? 0 : data_data[15];
                 o_data_data = {{24{ext}}, data_data[15:8]};
                 wr_subaddr = 5;
             end
-            if(i_data_addr[1:0] == 2'b10) begin
+            if(r_data_addr[1:0] == 2'b10) begin
                 ext = i_data_zeroextend ? 0 : data_data[23];
                 o_data_data = {{24{ext}}, data_data[23:16]};
                 wr_subaddr = 6;
@@ -135,7 +138,7 @@ always_comb begin
 
         // Half-Word
         2: begin
-            if(i_data_addr[1] == 0) begin
+            if(r_data_addr[1] == 0) begin
                 ext = i_data_zeroextend ? 0 : data_data[15];
                 o_data_data = {{16{ext}}, data_data[15:0]};
                 wr_subaddr = 2;
@@ -156,6 +159,9 @@ always_comb begin
 end
 
 always_ff @(posedge i_clk) begin 
+    r_data_addr <= i_data_addr;
+    r_inst_addr <= i_inst_addr;
+
     if (i_data_addr[31:28] == PERI_BASE) begin
         if (i_data_we && (i_data_addr[27:0] == 0)) begin
             case (i_data_width)
