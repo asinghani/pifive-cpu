@@ -1,5 +1,7 @@
 `default_nettype none
 
+`define FORMAL
+
 `ifdef FORMAL
 
 `define RISCV_FORMAL
@@ -11,7 +13,7 @@
 `endif
 
 module cpu (
-`ifdef FORMAL
+`ifdef FASDASDASDORMAL
     `rvformal_rand_reg input wire [31:0] i_instr,
 `else
     input wire [31:0] i_instr,
@@ -44,22 +46,39 @@ module cpu (
     output wire [3:0] rvfi_mem_rmask,
     output wire [3:0] rvfi_mem_wmask,
     output wire [31:0] rvfi_mem_rdata,
-    output wire [31:0] rvfi_mem_wdata,
+    output wire [31:0] rvfi_mem_wdata
 
 `endif
 );
 
+instruction_t instr_0;
 
+
+
+decode decode (
+    .i_instr(i_instr),
+    .i_pc(0),
+    .o_out(instr_0),
+    .i_clk(i_clk)
+);
+
+instruction_t instr_1 = 0;
+
+
+
+instruction_t instr_2 = 0;
+
+always_ff @(posedge i_clk) begin
+    instr_1 <= instr_0;
+    instr_2 <= instr_1;
+end
 
 // Formal verification
 `ifdef FORMAL
     
-    // Bring instructions through the three-stage pipeline
-    reg [63:0] instr_shiftreg;
-    assign rvfi_insn = instr_shiftreg[31:0];
-    always_ff @(posedge i_clk) begin
-        instr_shiftreg <= {i_instr, instr_shiftreg[63:32]};
-    end
+    assign rvfi_insn = instr_2.inst_raw[31:0];
+    assign rvfi_valid = instr_2.inst_raw[32];
+    assign rvfi_trap = instr_2.inst_invalid;
 
     // When valid, increment order - the new order will be used
     // on the NEXT valid instruction

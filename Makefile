@@ -1,6 +1,5 @@
 VERILOG_TOP=top
 CONSTRAINTS_FILE=constraints.lpf
-FORMAL_FILE=formal.sby
 
 REMOTE_MACHINE=anish@anish-MBP.local
 
@@ -15,7 +14,7 @@ JSON_FILE=build/synthesis.json
 CONFIG_FILE=build/pnr_out.config
 BITSTREAM_FILE=build/bitstream.bit
 
-VERILOG_SOURCES=$(shell find . -name "*.v") $(shell find . -name "*.sv")
+VERILOG_SOURCES=$(shell find . -not -path "./formal/*" -not -path "./build/*" -not -path "./sim_build/*" -name "*.v") $(shell find . -not -path "./formal/*" -not -path "./build/*" -not -path "./sim_build/*" -name "*.sv")
 PYTHON_SOURCES=$(wildcard *.py) $(wildcard **/*.py)
 
 ###############################################
@@ -81,8 +80,24 @@ test: $(VERILOG_SOURCES) $(PYTHON_SOURCES)
 ###############################################
 
 .PHONY: formal
-formal: $(VERILOG_SOURCES) $(FORMAL_FILE)
-	sby -f $(FORMAL_FILE) $(TARGET)
+.ONESHELL: formal
+formal: $(VERILOG_SOURCES)
+	mkdir -p build/
+	sv2v $(VERILOG_SOURCES) --exclude=assert > build/top.v
+	cd formal/riscv-formal/cores/cpu-1
+	-rm -r checks
+	python3 ../../checks/genchecks.py
+	make -C checks/ $(TARGET)
+
+.PHONY: formal-list
+.ONESHELL: formal-list
+formal-list: $(VERILOG_SOURCES)
+	mkdir -p build/
+	sv2v $(VERILOG_SOURCES) --exclude=assert > build/top.v
+	cd formal/riscv-formal/cores/cpu-1
+	-rm -r checks
+	python3 ../../checks/genchecks.py
+	ls -1 checks | grep sby
 
 ###############################################
 # Misc utilities
@@ -93,5 +108,3 @@ clean:
 	-rm -r build/
 	-rm -r sim_build/
 	-rm -r __pycache__/
-	-rm -r formal/
-	-rm -r formal_*/
