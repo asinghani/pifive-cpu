@@ -46,7 +46,7 @@ class Testbench:
 
         self.dump_to_trace = self.sim.lib.add_to_vcd_trace
         self.dump_to_trace.argtypes = [ctypes.c_void_p, ctypes.c_int]
-        self.time = 10
+        self.time = 20
 
         self.dut = self.sim.io
         self.internals = self.sim.internals

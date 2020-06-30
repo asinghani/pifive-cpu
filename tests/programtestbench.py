@@ -13,9 +13,9 @@ def parse_regs(data):
 NOOP = 0x00000033
 
 """
-    Test the CPU by loading the provided program into bootloader ROM and starting the CPU from the start of the program.
+    Test the CPU by loading the provided program into bootloader ROM and starting the CPU from the start of the program. Runs until data is written to GPIO output port.
 """
-def program_testbench(self, test_name, program=[], imem_init=[], dmem_init=[], imem_size=None, dmem_size=None, reference_registers=None, max_cycles=None):
+def program_testbench(test_name, program=[], imem_init=[], dmem_init=[], imem_size=512, dmem_size=512, reference_registers=None, max_cycles=None):
 
     brom_data = program + [NOOP] * 8
     brom_size = len(brom_data)
@@ -35,6 +35,7 @@ def program_testbench(self, test_name, program=[], imem_init=[], dmem_init=[], i
     with open("/tmp/dmem_data.txt", "w+") as f:
         f.writelines(["{0:036b}\n".format(x) for x in dmem_data])
 
+    print("BR", brom_size)
     build_params = {
         "BROM_INIT": "/tmp/brom_data.txt",
         "BROM_SIZE": brom_size,
@@ -42,7 +43,7 @@ def program_testbench(self, test_name, program=[], imem_init=[], dmem_init=[], i
         "IMEM_SIZE": imem_size,
         "DMEM_INIT": "/tmp/dmem_data.txt",
         "DMEM_SIZE": dmem_size
-    },
+    }
 
     tb = Testbench("build/top.v", test_name,
                    verilator_args=["-O3", "--top-module", "cpu"],
@@ -71,6 +72,7 @@ def program_testbench(self, test_name, program=[], imem_init=[], dmem_init=[], i
                 if failed:
                     print("Last instruction: {0:08X}".format(last_instr))
                     raise RuntimeError("Registers did not match expected result")
+
             instr_num = instr_num + 1
             last_instr = dut.d_finished_instruction
 
