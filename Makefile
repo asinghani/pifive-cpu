@@ -19,12 +19,21 @@ PYTHON_SOURCES=$(wildcard *.py) $(wildcard **/*.py)
 # ULX3S Synthesis, P&R, bitstream
 ###############################################
 
+.PHONY: all
+all: ecppack
+
+.PHONY: bootloader
+bootloader:
+	make -C software/bootloader all
+
+software/bootloader/build/bootloader-inst.mem: bootloader
+
 # Run synthesis
 .PHONY: yosys
 yosys: $(JSON_FILE)
-$(JSON_FILE): $(VERILOG_SOURCES)
+$(JSON_FILE): $(VERILOG_SOURCES) software/bootloader/build/bootloader-inst.mem
 	mkdir -p build
-	sv2v $(VERILOG_SOURCES) --exclude=assert > build/top.v
+	sv2v $(VERILOG_SOURCES) --define=BROM_SIZE=$(shell cat software/bootloader/build/bootloader-inst.mem | wc -l) --exclude=assert > build/top.v
 	yosys $(YOSYS_FLAGS) -p 'read_verilog -sv build/top.v; synth_ecp5 -json $(JSON_FILE) -top $(VERILOG_TOP)' > build/yosys.log
 
 # Run place-and-route
@@ -84,3 +93,4 @@ clean:
 	-rm -r build/
 	-rm -r sim_build/
 	-rm -r __pycache__/
+	make -C software/bootloader clean

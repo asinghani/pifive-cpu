@@ -33,7 +33,9 @@ initial begin
         $error("Depth must be a multiple of 512");
     end
 
-    $readmemb(INIT_FILE, ram);
+    if (INIT_FILE) begin
+        $readmemb(INIT_FILE, ram);
+    end
 end
 
 reg [(ADDR_WIDTH - 1):0] r_addr;

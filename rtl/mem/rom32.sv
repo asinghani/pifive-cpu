@@ -19,7 +19,9 @@ reg [35:0] ram[0:(DEPTH - 1)];
 
 // Initialization
 initial begin
-    $readmemb(INIT_FILE, ram);
+    if (INIT_FILE) begin
+        $readmemb(INIT_FILE, ram);
+    end
 end
 
 reg [(ADDR_WIDTH - 1):0] r_addr;
