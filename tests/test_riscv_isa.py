@@ -4,8 +4,8 @@ import os
 import sys
 from .programtestbench import program_testbench
 
-#os.system("make -C ../software/tests/riscv-tests clean")
-#os.system("make -C ../software/tests/riscv-tests all")
+os.system("make -C ../software/tests/riscv-tests clean")
+os.system("make -C ../software/tests/riscv-tests all")
 
 NOOP = 0
 SKIP = []
