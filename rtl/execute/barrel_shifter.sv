@@ -17,7 +17,7 @@ integer ind;
 always_comb begin
     for(ind = 0; ind < 32; ind = ind + 1) begin
         lt_shifts[ind] = i_in << ind;
-        rt_shifts[ind] = i_arith ? (i_in >>> ind) : (i_in >> ind);
+        rt_shifts[ind] = i_arith ? $unsigned($signed(i_in) >>> ind) : (i_in >> ind);
     end
 
     o_out = i_dir ? (rt_shifts[i_amt]) : (lt_shifts[i_amt]);
