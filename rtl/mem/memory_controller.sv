@@ -49,6 +49,7 @@ reg [31:0] r_inst_addr = {BROM_BASE, 28'b0};
 reg [31:0] r_data_addr = 0;
 
 reg [1:0] r_data_width = 0;
+reg r_data_zeroextend = 0;
 
 wire [31:0] brom_data;
 rom32 # (
@@ -163,19 +164,19 @@ always_comb begin
         // Byte
         1: begin
             if(r_data_addr[1:0] == 2'b00) begin
-                ext = i_data_zeroextend ? 0 : data_data[7];
+                ext = r_data_zeroextend ? 0 : data_data[7];
                 o_data_data = {{24{ext}}, data_data[7:0]};
             end
             else if(r_data_addr[1:0] == 2'b01) begin
-                ext = i_data_zeroextend ? 0 : data_data[15];
+                ext = r_data_zeroextend ? 0 : data_data[15];
                 o_data_data = {{24{ext}}, data_data[15:8]};
             end
             else if(r_data_addr[1:0] == 2'b10) begin
-                ext = i_data_zeroextend ? 0 : data_data[23];
+                ext = r_data_zeroextend ? 0 : data_data[23];
                 o_data_data = {{24{ext}}, data_data[23:16]};
             end
             else begin
-                ext = i_data_zeroextend ? 0 : data_data[31];
+                ext = r_data_zeroextend ? 0 : data_data[31];
                 o_data_data = {{24{ext}}, data_data[31:24]};
             end
         end
@@ -183,11 +184,11 @@ always_comb begin
         // Half-Word
         2: begin
             if(r_data_addr[1] == 0) begin
-                ext = i_data_zeroextend ? 0 : data_data[15];
+                ext = r_data_zeroextend ? 0 : data_data[15];
                 o_data_data = {{16{ext}}, data_data[15:0]};
             end
             else begin
-                ext = i_data_zeroextend ? 0 : data_data[31];
+                ext = r_data_zeroextend ? 0 : data_data[31];
                 o_data_data = {{16{ext}}, data_data[31:16]};
             end
         end
@@ -202,6 +203,7 @@ end
 always_ff @(posedge i_clk) begin 
     r_data_addr <= i_data_addr;
     r_data_width <= i_data_width;
+    r_data_zeroextend <= i_data_zeroextend;
     r_inst_addr <= i_inst_addr;
 
     valid <= 1;
