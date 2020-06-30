@@ -24,7 +24,7 @@ assign o_out.inst_invalid = invalid_opcode;
 always_comb begin
     invalid_opcode = 0;
     o_out.rs1_pc = ((opcode == `OPCODE_BRANCH) | (opcode == `OPCODE_JAL) |
-        (opcode == `OPCODE_JALR) | (opcode == `OPCODE_AUIPC));
+        (opcode == `OPCODE_AUIPC));
     o_out.rs2_imm = ((opcode != `OPCODE_ALU));
 
     o_out.branch = (opcode == `OPCODE_BRANCH);
