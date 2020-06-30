@@ -46,12 +46,12 @@ always_ff @(posedge i_clk) begin
             1: ram[i_addr][31:0] <= i_data[31:0];
 
             2: ram[i_addr][15:0] <= i_data[15:0];
-            3: ram[i_addr][31:16] <= i_data[31:16];
+            3: ram[i_addr][31:16] <= i_data[15:0];
 
             4: ram[i_addr][7:0] <= i_data[7:0];
-            5: ram[i_addr][15:8] <= i_data[15:8];
-            6: ram[i_addr][23:16] <= i_data[23:16];
-            7: ram[i_addr][31:24] <= i_data[31:24];
+            5: ram[i_addr][15:8] <= i_data[7:0];
+            6: ram[i_addr][23:16] <= i_data[7:0];
+            7: ram[i_addr][31:24] <= i_data[7:0];
         endcase
     end
 
