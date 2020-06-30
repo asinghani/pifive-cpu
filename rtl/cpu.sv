@@ -161,9 +161,9 @@ initial begin
 end
 
 always_ff @(posedge i_clk) begin
-    instr_1 <= kill ? 0 : instr_0;
-    instr_2 <= instr_1;
-    alu_last <= alu_out;
+    instr_1 <= (kill | i_rst) ? 0 : instr_0;
+    instr_2 <= i_rst ? 0 : instr_1;
+    alu_last <= i_rst ? 0 : alu_out;
 
     pc <= next_pc;
 end
