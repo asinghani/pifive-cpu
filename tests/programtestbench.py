@@ -35,7 +35,6 @@ def program_testbench(test_name, program=[], imem_init=[], dmem_init=[], imem_si
     with open("/tmp/dmem_data.txt", "w+") as f:
         f.writelines(["{0:036b}\n".format(x) for x in dmem_data])
 
-    print("BR", brom_size)
     build_params = {
         "BROM_INIT": "/tmp/brom_data.txt",
         "BROM_SIZE": brom_size,
