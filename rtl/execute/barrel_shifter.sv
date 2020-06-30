@@ -20,7 +20,7 @@ always_comb begin
         rt_shifts[ind] = i_arith ? (i_in >>> ind) : (i_in >> ind);
     end
 
-    o_out = i_dir ? (lt_shifts[i_amt]) : (rt_shifts[i_amt]);
+    o_out = i_dir ? (rt_shifts[i_amt]) : (lt_shifts[i_amt]);
 end
 
 endmodule

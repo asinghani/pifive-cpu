@@ -169,7 +169,7 @@ always_ff @(posedge i_clk) begin
 end
 
 `ifdef VERIFICATION
-    assign d_finished_instruction = instr_2.instr_raw[32] == 1 ? (instr_2.inst_raw[31:0]) : 0;
+    assign d_finished_instruction = instr_2.inst_raw[32] == 1 ? (instr_2.inst_raw[31:0]) : 0;
 `endif
 
 endmodule

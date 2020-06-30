@@ -52,7 +52,7 @@ always_comb begin
     case (i_instr[6:0])
         `OPCODE_ALU: o_out.alu_op = {funct7[5], funct3};
         `OPCODE_ALUIMM: begin
-            o_out.alu_op = {funct7[5], funct3};
+            o_out.alu_op = {(funct3 == `ALU_SRA) & funct7[5], funct3};
             o_out.imm = {{20{i_instr[31]}}, i_instr[31:20]};
         end
         `OPCODE_LOAD: o_out.imm = {{20{i_instr[31]}}, i_instr[31:20]};

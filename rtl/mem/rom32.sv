@@ -19,20 +19,7 @@ reg [35:0] ram[0:(DEPTH - 1)];
 
 // Initialization
 initial begin
-    /* verilator lint_off WIDTH */
-    if (INIT_FILE != "") begin
-        $readmemb(INIT_FILE, ram);
-    end
-    /* verilator lint_on WIDTH */
-end
-
-integer i;
-initial begin
-    `ifdef FORMAL
-        for(i = 0; i < DEPTH; i = i + 1) begin
-            //ram[i] = 36'hABCDEF123;
-        end
-    `endif
+    $readmemb(INIT_FILE, ram);
 end
 
 reg [(ADDR_WIDTH - 1):0] r_addr;
