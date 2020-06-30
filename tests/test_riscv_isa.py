@@ -4,16 +4,20 @@ import os
 import sys
 from .programtestbench import program_testbench
 
-os.system("make -C ../software/tests/riscv-tests clean")
-os.system("make -C ../software/tests/riscv-tests all")
+#os.system("make -C ../software/tests/riscv-tests clean")
+#os.system("make -C ../software/tests/riscv-tests all")
 
 NOOP = 0
+SKIP = []
 
 tests = []
 max_prog_len = 0
 max_data_len = 0
 for test in glob.glob("../software/tests/riscv-tests/build/hex/*-inst.hex"):
     name = os.path.splitext(os.path.basename(test))[0].replace("-inst", "")
+
+    if name in SKIP:
+        continue
     
     with open(test, "r") as f:
         program = [int(line.strip(), 16) for line in f.readlines() if len(line.strip()) == 8]
@@ -34,7 +38,7 @@ print("Starting tests...")
 for name, program, data in tests:
     print("Running {}...".format(name), end=" ", flush=True)
 
-    result = program_testbench("riscv_isa_"+name, program=program, dmem_init=data, max_cycles=20000)
+    result = program_testbench("riscv_isa_"+name, program=program, dmem_init=data, max_cycles=10000)
 
     if result == 1:
         print("Passed", flush=True)
@@ -46,3 +50,5 @@ for name, program, data in tests:
         os.system("sed -n '/<test_{}>/,/<fail>/p' ../software/tests/riscv-tests/build/dump/{}.dump".format(result >> 1, name))
 
         sys.exit(1)
+
+print("All tests passed!")
