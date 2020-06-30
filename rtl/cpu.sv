@@ -17,10 +17,10 @@ module cpu # (
 
 `ifdef VERIFICATION
     output wire [31:0] d_regs_out[0:31],
-    output wire [31:0] finished_instruction,
+    output wire [31:0] d_finished_instruction,
 `endif
 
-    input wire rst,
+    input wire i_rst,
     input wire i_clk
 );
 
@@ -144,7 +144,7 @@ always_comb begin
 end
 
 always_comb begin
-    if (rst) begin
+    if (i_rst) begin
         next_pc = INIT_PC;
     end
     else if (take_jump | take_branch) begin
@@ -169,7 +169,7 @@ always_ff @(posedge i_clk) begin
 end
 
 `ifdef VERIFICATION
-    assign finished_instruction = instr_2.instr_raw[32] == 1 ? (instr_2.inst_raw[31:0]) : 0;
+    assign d_finished_instruction = instr_2.instr_raw[32] == 1 ? (instr_2.inst_raw[31:0]) : 0;
 `endif
 
 endmodule
