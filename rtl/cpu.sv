@@ -2,15 +2,25 @@
 
 module cpu # (
     parameter BROM_SIZE = 512,
-    parameter BROM_INIT = ""
+    parameter BROM_INIT = "",
+
+    parameter IMEM_SIZE = 512,
+    parameter IMEM_INIT = "",
+
+    parameter DMEM_SIZE = 512,
+    parameter DMEM_INIT = "",
+
+    parameter INIT_PC = 32'h10000000
 ) (
     output wire [31:0] o_gpio_out,
     input wire [31:0] i_gpio_in,
 
 `ifdef VERIFICATION
     output wire [31:0] d_regs_out[0:31],
+    output wire [31:0] finished_instruction,
 `endif
 
+    input wire rst,
     input wire i_clk
 );
 
@@ -22,8 +32,8 @@ wire kill = take_branch | take_jump;
 instruction_t instr_0;
 
 wire [31:0] raw_instr;
-reg [31:0] pc = 32'h10000000 - 4;
-wire [31:0] next_pc;
+reg [31:0] pc = INIT_PC - 4;
+reg [31:0] next_pc;
 
 wire [31:0] data_addr;
 wire [31:0] data_rdata;
@@ -34,7 +44,13 @@ wire data_zeroextend;
 
 memory_controller #(
     .BROM_INIT(BROM_INIT),
-    .BROM_SIZE(BROM_SIZE)
+    .BROM_SIZE(BROM_SIZE),
+
+    .IMEM_INIT(IMEM_INIT),
+    .IMEM_SIZE(IMEM_SIZE),
+
+    .DMEM_INIT(DMEM_INIT),
+    .DMEM_SIZE(DMEM_SIZE)
 ) mem_controller (
     .i_inst_addr(next_pc),
     .o_inst_data(raw_instr),
@@ -127,9 +143,17 @@ always_comb begin
     end
 end
 
-//assign rd_write = (instr_2.jump) ? (instr_2.pc + 4) : (((instr_2.loadstore > 0) && (instr_2.loadstore < 4)) ? data_rdata : alu_last);
-
-assign next_pc = (take_jump | take_branch) ? alu_out : (pc + 4);
+always_comb begin
+    if (rst) begin
+        next_pc = INIT_PC;
+    end
+    else if (take_jump | take_branch) begin
+        next_pc = alu_out;
+    end
+    else begin
+        next_pc = pc + 4;
+    end
+end
 
 initial begin
     instr_1 = 0;
@@ -143,5 +167,9 @@ always_ff @(posedge i_clk) begin
 
     pc <= next_pc;
 end
+
+`ifdef VERIFICATION
+    assign finished_instruction = instr_2.instr_raw[32] == 1 ? (instr_2.inst_raw[31:0]) : 0;
+`endif
 
 endmodule

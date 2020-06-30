@@ -12,9 +12,7 @@ module decode (
     output instruction_t o_out
 );
 
-`ifdef FORMAL
-    assign o_out.inst_raw = {1'b1, i_instr};
-`endif
+assign o_out.inst_raw = {1'b1, i_instr};
 
 wire [6:0] opcode = i_instr[6:0];
 wire [6:0] funct7 = i_instr[31:25];

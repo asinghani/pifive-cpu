@@ -23,7 +23,9 @@ module memory_controller
     parameter DMEM_BASE = 4'h4,
     parameter PERI_BASE = 4'h8,
 
-    parameter BROM_INIT = ""
+    parameter BROM_INIT = "",
+    parameter IMEM_INIT = "",
+    parameter DMEM_INIT = ""
 )(
     input wire [31:0] i_inst_addr,
     output reg [31:0] o_inst_data,
@@ -63,7 +65,8 @@ reg [2:0] wr_subaddr;
 wire [31:0] imem_data;
 wire [31:0] imem_addr = (i_inst_addr[31:28] == BROM_BASE) ? i_data_addr : i_inst_addr;
 bram32 # (
-    .DEPTH(IMEM_SIZE)
+    .DEPTH(IMEM_SIZE),
+    .INIT_FILE(IMEM_INIT)
 ) instruction_ram (
     .o_data(imem_data),
     .i_addr(imem_addr[($clog2(IMEM_SIZE * 4) - 1):2]),
@@ -75,7 +78,8 @@ bram32 # (
 
 wire [31:0] dmem_data;
 bram32 # (
-    .DEPTH(DMEM_SIZE)
+    .DEPTH(DMEM_SIZE),
+    .INIT_FILE(DMEM_INIT)
 ) data_ram (
     .o_data(dmem_data),
     .i_addr(i_data_addr[($clog2(DMEM_SIZE * 4) - 1):2]),
