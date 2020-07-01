@@ -13,6 +13,7 @@ CONFIG_FILE=build/pnr_out.config
 BITSTREAM_FILE=build/bitstream.bit
 
 VERILOG_SOURCES=$(shell find . -not -path "./formal/*" -not -path "./build/*" -not -path "./sim_build/*" -name "*.v") $(shell find . -not -path "./formal/*" -not -path "./build/*" -not -path "./sim_build/*" -name "*.sv")
+VERILOG_TEST_SOURCES=$(shell find . -not -path "./formal/*" -not -path "./build/*" -not -path "./sim_build/*" -name "*.v") $(shell find . -not -path "./formal/*" -not -path "./build/*" -not -path "./sim_build/*" ! -name "top.sv" -name "*.sv")
 PYTHON_SOURCES=$(wildcard *.py) $(wildcard **/*.py)
 
 ###############################################
@@ -78,10 +79,10 @@ reset-remote:
 ###############################################
 
 .PHONY: test
-test: $(VERILOG_SOURCES) $(PYTHON_SOURCES)
+test: $(VERILOG_TEST_SOURCES) $(PYTHON_SOURCES)
 	-rm -r sim_build/
 	mkdir -p build
-	sv2v $(VERILOG_SOURCES) --exclude=assert --define=VERIFICATION --define=VERILATOR > build/top.v
+	sv2v $(VERILOG_TEST_SOURCES) --exclude=assert --define=VERIFICATION --define=VERILATOR > build/top.v
 	VERILATOR_TRACE=1 python3 test.py $(TARGET)
 
 ###############################################

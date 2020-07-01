@@ -45,7 +45,7 @@ def program_testbench(test_name, program=[], imem_init=[], dmem_init=[], imem_si
     }
 
     tb = Testbench("build/top.v", test_name,
-                   verilator_args=["-O3", "--top-module", "cpu"],
+                   verilator_args=["-O3", "--top-module", "cpu", "-Wno-MULTITOP"],
                    params=build_params,
                    verilog_module_name="cpu")
     dut = tb.dut

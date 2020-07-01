@@ -9,6 +9,9 @@
 // 0x8000_0000 - Peripherals
 //   - 0x8000_0000 - GPIO Output
 //   - 0x8000_0004 - GPIO Input
+//   - 0x8000_0010 - {30'b0, uart_rx_valid, uart_tx_ready}
+//   - 0x8000_0014 - uart_rx_in
+//   - 0x8000_0018 - uart_tx_out
 
 module memory_controller
 # (
@@ -25,7 +28,11 @@ module memory_controller
 
     parameter BROM_INIT = "",
     parameter IMEM_INIT = "",
-    parameter DMEM_INIT = ""
+    parameter DMEM_INIT = "",
+
+    parameter UART_BAUD = 115200,
+    parameter CLK_FREQ = 25000000,
+    parameter UART_FIFO_DEPTH = 128
 )(
     input wire [31:0] i_inst_addr,
     output reg [31:0] o_inst_data,
@@ -35,12 +42,17 @@ module memory_controller
     input wire [31:0] i_data_data,
     input wire [1:0] i_data_width,
     input wire i_data_we,
+    input wire i_data_read_en,
     input wire i_data_zeroextend,
 
-    output reg [31:0] o_gpio_out = 0,
+    output wire [31:0] o_gpio_out,
     input wire [31:0] i_gpio_in,
 
-    input wire i_clk
+    output wire o_tx,
+    input wire i_rx,
+
+    input wire i_clk,
+    input wire i_rst
 );
 
 reg valid = 0;
@@ -90,6 +102,28 @@ bram32 # (
     .i_clk(i_clk)
 );
 
+reg [31:0] mmio_wdata;
+wire [31:0] mmio_rdata;
+reg [3:0] mmio_byte_we;
+
+mmio #(
+    .UART_BAUD(UART_BAUD),
+    .CLK_FREQ(CLK_FREQ),
+    .UART_FIFO_DEPTH(UART_FIFO_DEPTH)
+) mmio (
+    .i_addr(i_data_addr[27:2]),
+    .i_data(mmio_wdata),
+    .i_byte_we(mmio_byte_we),
+    .i_read_en(i_data_read_en),
+    .o_data(mmio_rdata),
+    .o_gpio_out(o_gpio_out),
+    .i_gpio_in(i_gpio_in),
+    .o_tx(o_tx),
+    .i_rx(i_rx),
+    .i_clk(i_clk),
+    .i_rst(i_rst)
+);
+
 reg [31:0] data_data;
 
 always_comb begin
@@ -107,17 +141,7 @@ always_comb begin
     case (r_data_addr[31:28])
         IMEM_BASE: data_data = (r_inst_addr[31:28] == BROM_BASE) ? imem_data : 0;
         DMEM_BASE: data_data = dmem_data;
-        PERI_BASE: begin
-            if (r_data_addr[27:2] == 0) begin
-                data_data = o_gpio_out;
-            end
-            else if (r_data_addr[27:2] == 1) begin
-                data_data = i_gpio_in;
-            end
-            else begin
-                data_data = 0;
-            end
-        end
+        PERI_BASE: data_data = mmio_rdata;
         default: data_data = 0;
     endcase
 end
@@ -207,39 +231,48 @@ always_ff @(posedge i_clk) begin
     r_inst_addr <= i_inst_addr;
 
     valid <= 1;
+end
 
+always_comb begin
     if (i_data_addr[31:28] == PERI_BASE) begin
         if (i_data_we && (i_data_addr[27:2] == 0)) begin
             case (i_data_width)
                 // Byte
                 1: begin
                     if(i_data_addr[1:0] == 2'b00) begin
-                        o_gpio_out[7:0] <= i_data_data[7:0];
+                        mmio_wdata = {24'b0, i_data_data[7:0]};
+                        mmio_byte_we = 4'b0001;
                     end
                     else if(i_data_addr[1:0] == 2'b01) begin
-                        o_gpio_out[15:8] <= i_data_data[7:0];
+                        mmio_wdata = {16'b0, i_data_data[7:0], 8'b0};
+                        mmio_byte_we = 4'b0010;
                     end
                     else if(i_data_addr[1:0] == 2'b10) begin
-                        o_gpio_out[23:16] <= i_data_data[7:0];
+                        mmio_wdata = {8'b0, i_data_data[7:0], 16'b0};
+                        mmio_byte_we = 4'b0100;
                     end
                     else begin
-                        o_gpio_out[31:24] <= i_data_data[7:0];
+                        mmio_wdata = {i_data_data[7:0], 24'b0};
+                        mmio_byte_we = 4'b1000;
                     end
                 end
 
                 // Half-Word
                 2: begin
                     if(i_data_addr[1] == 0) begin
-                        o_gpio_out[15:0] <= i_data_data[15:0];
+                        mmio_wdata = {16'b0, i_data_data[15:0]};
+                        mmio_byte_we = 4'b0011;
                     end
                     else begin
-                        o_gpio_out[31:16] <= i_data_data[15:0];
+                        mmio_wdata = {i_data_data[15:0], 16'b0};
+                        mmio_byte_we = 4'b1100;
                     end
                 end
 
                 // Word
                 default: begin
-                    o_gpio_out <= i_data_data;
+                    mmio_wdata = i_data_data[31:0];
+                    mmio_byte_we = 4'b1111;
                 end
             endcase
         end

@@ -19,7 +19,7 @@ reg [35:0] ram[0:(DEPTH - 1)];
 
 // Initialization
 initial begin
-    if (INIT_FILE) begin
+    if (|INIT_FILE) begin
         $readmemb(INIT_FILE, ram);
     end
 end

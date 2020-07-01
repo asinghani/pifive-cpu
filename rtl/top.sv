@@ -12,13 +12,6 @@ module top #(
 );
 
 wire clk = i_clk;
-wire locked;
-clk_pll pll (
-    .clkin(i_clk),
-    .clkout0(),
-    .locked(locked)
-);
-
 wire p_rst;
 
 edge_detect edge_detect (
@@ -39,7 +32,7 @@ sync_2ff #(
 wire [31:0] gpio_out;
 
 always_ff @(posedge clk) begin
-    o_led <= {locked, gpio_out[6:0]};
+    o_led <= gpio_out[7:0];
 end
 
 cpu #(

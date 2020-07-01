@@ -33,7 +33,7 @@ initial begin
         $error("Depth must be a multiple of 512");
     end
 
-    if (INIT_FILE) begin
+    if (|INIT_FILE) begin
         $readmemb(INIT_FILE, ram);
     end
 end

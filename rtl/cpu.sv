@@ -20,6 +20,9 @@ module cpu # (
     output wire [31:0] d_finished_instruction,
 `endif
 
+    output wire o_tx,
+    input wire i_rx,
+
     input wire i_rst,
     input wire i_clk
 );
@@ -40,6 +43,7 @@ wire [31:0] data_rdata;
 wire [31:0] data_wdata;
 wire [1:0] data_width;
 wire data_we;
+wire data_read_en;
 wire data_zeroextend;
 
 memory_controller #(
@@ -60,12 +64,17 @@ memory_controller #(
     .i_data_data(data_wdata),
     .i_data_width(data_width),
     .i_data_we(data_we),
+    .i_data_read_en(data_read_en),
     .i_data_zeroextend(data_zeroextend),
 
     .o_gpio_out(o_gpio_out),
     .i_gpio_in(i_gpio_in),
 
-    .i_clk(i_clk)
+    .o_tx(o_tx),
+    .i_rx(i_rx),
+
+    .i_clk(i_clk),
+    .i_rst(i_rst)
 );
 
 decode decode (
@@ -131,6 +140,7 @@ assign data_wdata = rs2;
 assign data_addr = (rs1 + instr_1.imm);
 assign data_width = instr_1.loadstore[1:0];
 assign data_we = (instr_1.loadstore > 4);
+assign data_read_en = ((instr_1.loadstore > 0) && (instr_1.loadstore < 4));
 assign data_zeroextend = instr_1.load_zeroextend;
 
 always_comb begin
