@@ -8,7 +8,12 @@ module alu (
     input wire [31:0] i_A,
     input wire [31:0] i_B,
 
-    output reg [31:0] o_out
+    output reg [31:0] o_out,
+
+    // Used for memory acccesses
+    // Less space-efficient, more clock-efficient
+    // than using o_out w/ (i_op = 0)
+    output wire [31:0] o_sum
 );
 
 wire sp = i_op[3]; // Differentiate ADD/SUB, SRL/SRA
@@ -23,7 +28,10 @@ barrel_shifter shifter (
     .o_out(shift_out)
 );
 
+assign o_sum = i_A + i_B;
+
 always_comb begin
+
     case (op)
         `ALU_ADD:  o_out = i_A + (sp ? (~i_B + 1) : i_B);
         `ALU_XOR:  o_out = i_A ^ i_B;

@@ -104,11 +104,13 @@ wire [31:0] alu_A = (instr_1.rs1_pc) ? instr_1.pc : rs1;
 wire [31:0] alu_B = (instr_1.rs2_imm) ? instr_1.imm : rs2;
 
 wire [31:0] alu_out;
+wire [31:0] alu_sum;
 alu alu (
     .i_op(instr_1.alu_op),
     .i_A(alu_A),
     .i_B(alu_B),
-    .o_out(alu_out)
+    .o_out(alu_out),
+    .o_sum(alu_sum)
 );
 
 wire branch_out;
@@ -126,7 +128,7 @@ reg [31:0] alu_last = 0;
 instruction_t instr_2;
 
 assign data_wdata = rs2;
-assign data_addr = alu_out;
+assign data_addr = (rs1 + instr_1.imm);
 assign data_width = instr_1.loadstore[1:0];
 assign data_we = (instr_1.loadstore > 4);
 assign data_zeroextend = instr_1.load_zeroextend;
@@ -148,7 +150,7 @@ always_comb begin
         next_pc = INIT_PC;
     end
     else if (take_jump | take_branch) begin
-        next_pc = alu_out;
+        next_pc = alu_sum;
     end
     else begin
         next_pc = pc + 4;

@@ -34,7 +34,7 @@ yosys: $(JSON_FILE)
 $(JSON_FILE): $(VERILOG_SOURCES) software/bootloader/build/bootloader-inst.mem
 	mkdir -p build
 	sv2v $(VERILOG_SOURCES) --define=BROM_SIZE=$(shell cat software/bootloader/build/bootloader-inst.mem | wc -l) --exclude=assert > build/top.v
-	yosys $(YOSYS_FLAGS) -p 'read_verilog -sv build/top.v; synth_ecp5 -json $(JSON_FILE) -top $(VERILOG_TOP)' > build/yosys.log
+	yosys $(YOSYS_FLAGS) -p 'read_verilog -sv build/top.v; synth_ecp5 -noflatten -abc9 -json $(JSON_FILE) -top $(VERILOG_TOP)' > build/yosys.log
 
 # Run place-and-route
 .PHONY: nextpnr
