@@ -10,6 +10,9 @@ module cpu # (
     parameter DMEM_SIZE = 512,
     parameter DMEM_INIT = "",
 
+    parameter CLK_FREQ = 25000000,
+    parameter UART_BAUD = 115200,
+
     parameter INIT_PC = 32'h10000000
 ) (
     output wire [31:0] o_gpio_out,
@@ -54,7 +57,9 @@ memory_controller #(
     .IMEM_SIZE(IMEM_SIZE),
 
     .DMEM_INIT(DMEM_INIT),
-    .DMEM_SIZE(DMEM_SIZE)
+    .DMEM_SIZE(DMEM_SIZE),
+    .CLK_FREQ(CLK_FREQ),
+    .UART_BAUD(UART_BAUD)
 ) mem_controller (
     .i_inst_addr(next_pc),
     .o_inst_data(raw_instr),

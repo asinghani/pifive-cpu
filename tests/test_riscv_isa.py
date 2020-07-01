@@ -2,7 +2,7 @@
 import glob
 import os
 import sys
-from .programtestbench import program_testbench
+from .programtestbench import ProgramTestbench
 
 os.system("make -C ../software/tests/riscv-tests clean")
 os.system("make -C ../software/tests/riscv-tests all")
@@ -38,7 +38,8 @@ print("Starting tests...")
 for name, program, data in tests:
     print("Running {}...".format(name), end=" ", flush=True)
 
-    result = program_testbench("riscv_isa_"+name, program=program, dmem_init=data, max_cycles=10000)
+    tb = ProgramTestbench("riscv_isa_"+name, program=program, dmem_init=data)
+    result = tb.run_until_gpio_out(max_cycles=10000)
 
     if result == 1:
         print("Passed", flush=True)

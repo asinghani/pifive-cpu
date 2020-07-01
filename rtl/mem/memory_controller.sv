@@ -30,8 +30,8 @@ module memory_controller
     parameter IMEM_INIT = "",
     parameter DMEM_INIT = "",
 
-    parameter UART_BAUD = 115200,
     parameter CLK_FREQ = 25000000,
+    parameter UART_BAUD = 115200,
     parameter UART_FIFO_DEPTH = 128
 )(
     input wire [31:0] i_inst_addr,
@@ -184,6 +184,8 @@ always_comb begin
 end
 
 always_comb begin
+    ext = 0;
+
     case (r_data_width)
         // Byte
         1: begin
@@ -234,8 +236,10 @@ always_ff @(posedge i_clk) begin
 end
 
 always_comb begin
+    mmio_wdata = 32'b0;
+    mmio_byte_we = 4'b0000;
     if (i_data_addr[31:28] == PERI_BASE) begin
-        if (i_data_we && (i_data_addr[27:2] == 0)) begin
+        if (i_data_we) begin
             case (i_data_width)
                 // Byte
                 1: begin

@@ -16,7 +16,7 @@ module mmio # (
     input wire [31:0] i_data,
     input wire [3:0] i_byte_we,
     input wire i_read_en,
-    output reg [31:0] o_data = 0,
+    output reg [31:0] o_data,
 
     output reg [31:0] o_gpio_out = 0,
     input wire [31:0] i_gpio_in,
@@ -44,16 +44,16 @@ uart_tx #(
 
 wire uart_tx_fifo_empty;
 wire uart_tx_fifo_full;
-wire uart_tx_write_en = (i_addr == 26'h5) && (~uart_tx_fifo_full) && (i_byte_we[0] == 1);
+wire uart_tx_write_en = (i_addr == 26'h6) && (~uart_tx_fifo_full) && (i_byte_we[0] == 1);
 uart_fifo #(
     .WIDTH(9),
     .DEPTH(UART_FIFO_DEPTH)
 ) tx_fifo (
-    .i_rd_en(uart_tx_ready && (~uart_tx_fifo_empty)),
+    .i_rd_en(uart_tx_ready && (~uart_tx_fifo_empty) && (~uart_tx_valid)),
     .o_rd_data(uart_tx_data),
     .o_rd_valid(uart_tx_valid),
 
-    .i_wr_en(uart_tx_write_en & (~uart_tx_fifo_full)),
+    .i_wr_en(uart_tx_write_en),
     .i_wr_data({1'b0, i_data[7:0]}),
 
     .o_empty(uart_tx_fifo_empty),
@@ -79,14 +79,14 @@ uart_rx #(
 
 wire uart_rx_fifo_empty;
 wire uart_rx_fifo_full;
-wire uart_rx_read_en = (i_addr == 26'h6) && (~uart_rx_fifo_empty) && i_read_en;
+wire uart_rx_read_en = (i_addr == 26'h5) && (~uart_rx_fifo_empty) && i_read_en;
 wire [8:0] uart_rx_fifo_data;
 wire uart_rx_fifo_valid;
 uart_fifo #(
     .WIDTH(9),
     .DEPTH(UART_FIFO_DEPTH)
 ) rx_fifo (
-    .i_rd_en(uart_rx_read_en && (~uart_rx_fifo_empty)),
+    .i_rd_en(uart_rx_read_en),
     .o_rd_data(uart_rx_fifo_data),
     .o_rd_valid(uart_rx_fifo_valid),
 
@@ -114,7 +114,7 @@ always_ff @(posedge i_clk) begin
         r_data <= i_gpio_in;
     end
     else if (i_addr == 26'h4) begin
-        r_data <= {31'b0, (~uart_tx_fifo_full)};
+        r_data <= {30'b0, (~uart_rx_fifo_empty), (~uart_tx_fifo_full)};
     end
 end
 
