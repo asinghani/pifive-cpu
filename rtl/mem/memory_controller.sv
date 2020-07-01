@@ -12,6 +12,7 @@
 //   - 0x8000_0010 - {30'b0, uart_rx_valid, uart_tx_ready}
 //   - 0x8000_0014 - uart_rx_in
 //   - 0x8000_0018 - uart_tx_out
+//   - 0x8000_0020 - millis since boot
 
 module memory_controller
 # (

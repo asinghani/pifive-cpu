@@ -6,6 +6,7 @@
 //   - 0x8000_0010 (4) - {30'b0, uart_rx_ready, uart_tx_ready}
 //   - 0x8000_0014 (5) - uart_rx_in
 //   - 0x8000_0018 (6) - uart_tx_out
+//   - 0x8000_0020 (8) - millis since boot
 
 module mmio # (
     parameter UART_BAUD = 115200,
@@ -27,6 +28,11 @@ module mmio # (
     input wire i_clk,
     input wire i_rst
 );
+
+localparam CLKS_PER_MILLIS = (CLK_FREQ / 1000);
+
+reg [$clog2(CLKS_PER_MILLIS):0] cycle_ctr = 0;
+reg [31:0] millis = 0;
 
 wire uart_tx_ready;
 wire [8:0] uart_tx_data;
@@ -107,14 +113,27 @@ reg [31:0] r_data;
 always_ff @(posedge i_clk) begin
     r_addr <= i_addr;
     r_data <= 0;
+
+    if (cycle_ctr == CLKS_PER_MILLIS[$clog2(CLKS_PER_MILLIS):0]) begin
+        cycle_ctr <= 0;
+        millis <= millis + 1;
+    end
+    else begin
+        cycle_ctr <= cycle_ctr + 1;
+    end
+
+
     if (i_addr == 0) begin
         r_data <= o_gpio_out;
     end
     else if (i_addr == 1) begin
         r_data <= i_gpio_in;
     end
-    else if (i_addr == 26'h4) begin
+    else if (i_addr == 4) begin
         r_data <= {30'b0, (~uart_rx_fifo_empty), (~uart_tx_fifo_full)};
+    end
+    else if (i_addr == 8) begin
+        r_data <= millis;
     end
 end
 
