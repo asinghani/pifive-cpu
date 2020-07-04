@@ -10,7 +10,7 @@
 
 int main() {
     gpio_out(0, 1);
-    //sleep(1);
+    sleep(500);
     gpio_out(0, 0);
 
     // First 4 bytes is length of program
