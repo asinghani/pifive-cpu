@@ -73,7 +73,7 @@ cpu #(
     .IMEM_INIT(""),
 
     .DMEM_SIZE(8192), // Top of stack = 0x8000
-    .DMEM_INIT("software/bootloader/build/bootloader-data.mem")
+    .DMEM_INIT("")
 ) cpu (
     .o_gpio_out(gpio_out),
     .i_gpio_in({26'b0, btn_in}),

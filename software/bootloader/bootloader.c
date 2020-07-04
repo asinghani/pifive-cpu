@@ -5,32 +5,42 @@
 #define STR(x) #x
 #define XSTR(s) STR(s)
 
+#define PROGRAM_MEM_PTR ((uint8_t*) PROG_MEM_BASE)
+#define DATA_MEM_PTR ((uint8_t*) DATA_MEM_BASE)
+
 int main() {
     gpio_out(0, 1);
     sleep(250);
     gpio_out(0, 0);
 
-    volatile uint8_t *program_mem_ptr = (uint8_t*) PROG_MEM_BASE;
-    volatile uint8_t *data_mem_ptr = (uint8_t*) DATA_MEM_BASE;
-
     // First 4 bytes is length of program
     uint32_t prog_length = uart_getw();
     uint8_t prog_checksum_calc = 0;
     
-    for(int i = 0; i < prog_length; i++) {
+    for(uint32_t i = 0; i < prog_length; i++) {
         uint8_t x = (uint8_t) uart_getc();
         prog_checksum_calc += x;
-        *(program_mem_ptr + i) = x;
+        *(PROGRAM_MEM_PTR + i) = x;
+
+        // Every 32 bytes send one ACK
+        if ((i & (1 << 5)) == (1 << 5)) {
+            uart_putc(0x6);
+        } 
     }
 
     // Next 4 bytes is length of data section
     uint32_t data_length = uart_getw();
     uint8_t data_checksum_calc = 0;
     
-    for(int i = 0; i < data_length; i++) {
+    for(uint32_t i = 0; i < data_length; i++) {
         uint8_t x = (uint8_t) uart_getc();
         data_checksum_calc += x;
-        *(data_mem_ptr + i) = x;
+        *(DATA_MEM_PTR + i) = x;
+
+        // Every 32 bytes send one ACK
+        if ((i & (1 << 5)) == (1 << 5)) {
+            uart_putc(0x6);
+        } 
     }
 
     // Last 2 bytes is program and data checksum
@@ -48,6 +58,8 @@ int main() {
     }
 
     uart_putc(0x13); // Successful upload
+
+    sleep(100);
 
     // Jump to start of instruction memory
     __asm__("lui t0, " XSTR(PROG_MEM_BASE >> 12) "\n\tjalr x0, t0, " XSTR(PROG_MEM_BASE & 0xFFF));

@@ -18,6 +18,7 @@ build/$(PROJ)-inst.hex: build/$(PROJ)-inst.bin
 
 build/$(PROJ)-data.hex: build/$(PROJ)-data.bin
 	$(RISCV)-bin2hex -w 32 build/$(PROJ)-data.bin build/$(PROJ)-data.hex
+	@test -s build/bootloader-data.hex && echo "Error: data region is not empty. This may lead to runtime data corruption." && false || true
 
 build/$(PROJ)-inst.bin: build/$(PROJ).elf
 	$(RISCV)-objcopy build/$(PROJ).elf -O binary --remove-section=.data --remove-section=.bss --remove-section=.sdata build/$(PROJ)-inst.bin
