@@ -67,7 +67,7 @@ end
 
 cpu #(
     .BROM_SIZE(BROM_SIZE),
-    .BROM_INIT("software/botloader/build/bootloader-inst.mem"),
+    .BROM_INIT("software/bootloader/build/bootloader-inst.mem"),
 
     .IMEM_SIZE(8192),
     .IMEM_INIT(""),
