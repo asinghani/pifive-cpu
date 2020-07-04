@@ -1,6 +1,6 @@
 `default_nettype none
 
-`define BROM_SIZE 128
+//`define BROM_SIZE 128
 
 module top #(
     parameter BROM_SIZE = `BROM_SIZE
@@ -60,10 +60,12 @@ sync_2ff #(
 );
 
 wire [31:0] gpio_out;
+wire rst = p_rst | dtr;
 
 always_ff @(posedge i_clk) begin
     o_led <= gpio_out[7:0];
 end
+
 
 cpu #(
     .BROM_SIZE(BROM_SIZE),
@@ -81,7 +83,7 @@ cpu #(
     .o_tx(o_tx),
     .i_rx(rx),
 
-    .i_rst(p_rst | dtr),
+    .i_rst(rst),
     .i_clk(i_clk)
 );
 

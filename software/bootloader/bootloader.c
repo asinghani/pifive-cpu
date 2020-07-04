@@ -10,20 +10,20 @@
 
 int main() {
     gpio_out(0, 1);
-    sleep(250);
+    //sleep(1);
     gpio_out(0, 0);
 
     // First 4 bytes is length of program
     uint32_t prog_length = uart_getw();
     uint8_t prog_checksum_calc = 0;
-    
+
     for(uint32_t i = 0; i < prog_length; i++) {
         uint8_t x = (uint8_t) uart_getc();
         prog_checksum_calc += x;
         *(PROGRAM_MEM_PTR + i) = x;
 
-        // Every 32 bytes send one ACK
-        if ((i & (1 << 5)) == (1 << 5)) {
+        // Every 16 bytes send one ACK
+        if ((i & 0xF) == 0) {
             uart_putc(0x6);
         } 
     }
@@ -31,14 +31,14 @@ int main() {
     // Next 4 bytes is length of data section
     uint32_t data_length = uart_getw();
     uint8_t data_checksum_calc = 0;
-    
+
     for(uint32_t i = 0; i < data_length; i++) {
         uint8_t x = (uint8_t) uart_getc();
         data_checksum_calc += x;
         *(DATA_MEM_PTR + i) = x;
 
-        // Every 32 bytes send one ACK
-        if ((i & (1 << 5)) == (1 << 5)) {
+        // Every 16 bytes send one ACK
+        if ((i & 0xF) == 0) {
             uart_putc(0x6);
         } 
     }

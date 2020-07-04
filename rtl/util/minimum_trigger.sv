@@ -6,10 +6,10 @@ module minimum_trigger #(
     // Min number of cycles that signal must be high
     parameter MIN_CYCLES = 12500000
 )(
-    reg o_out = 0,
-    wire i_in,
+    output reg o_out = 0,
+    input wire i_in,
 
-    wire i_clk
+    input wire i_clk
 );
 
 reg [$clog2(MIN_CYCLES):0] counter = 0;

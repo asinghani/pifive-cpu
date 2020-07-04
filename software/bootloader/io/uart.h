@@ -18,7 +18,7 @@ unsigned char uart_getc() {
 
 // Get a 32-bit word in LSB-first order
 uint32_t uart_getw() {
-    uint32_t word;
+    uint32_t word = 0;
     word |= ((uint8_t) uart_getc()) << 0;
     word |= ((uint8_t) uart_getc()) << 8;
     word |= ((uint8_t) uart_getc()) << 16;
