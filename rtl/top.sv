@@ -1,5 +1,8 @@
 `default_nettype none
 
+// BROM_SIZE should be set during sv2v transpilation
+// Otherwise, uncomment this line and set it to be the
+// size (in 32-bit words) of the bootloader.
 //`define BROM_SIZE 128
 
 module top #(
