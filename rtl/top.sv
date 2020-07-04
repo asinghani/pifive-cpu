@@ -67,12 +67,12 @@ end
 
 cpu #(
     .BROM_SIZE(BROM_SIZE),
-    .BROM_INIT("software/bootloader/build/bootloader-inst.mem"),
+    .BROM_INIT("software/botloader/build/bootloader-inst.mem"),
 
-    .IMEM_SIZE(512),
+    .IMEM_SIZE(8192),
     .IMEM_INIT(""),
 
-    .DMEM_SIZE(512),
+    .DMEM_SIZE(8192), // Top of stack = 0x8000
     .DMEM_INIT("software/bootloader/build/bootloader-data.mem")
 ) cpu (
     .o_gpio_out(gpio_out),
