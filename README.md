@@ -10,7 +10,7 @@ The main module for this CPU is [rtl/cpu.sv](rtl/cpu.sv). It is a full SoC inclu
 
 ## Loading code
 
-Code for this CPU can be written as C or ASM and built using gcc. A sample makefile and linker config can be seen at [software/blinky](software/blinky), and the memory map is defined at [mem/memory_controller.sv](mem/memory_controller.sv). Additional memory-mapped I/O can be added in [io/mmio.sv](io/mmio.sv). To load code onto the CPU, generate the `$PROGRAM-inst.hex` and `$PROGRAM-data.hex` files (the provided Makefiles generate these in a `build/` folder), and then run [scripts/program.py](scripts/program.py) with arguments `<Serial port> <Inst hex file> <Data hex file> <UART baud rate>`, which will reset the core and then upload the program.
+Code for this CPU can be written as C or ASM and built using gcc. A sample makefile and linker config can be seen at [software/blinky](software/blinky), and the memory map is defined at [rtl/mem/memory_controller.sv](rtl/mem/memory_controller.sv). Additional memory-mapped I/O can be added in [rtl/mem/mmio.sv](rtl/mem/mmio.sv). To load code onto the CPU, generate the `$PROGRAM-inst.hex` and `$PROGRAM-data.hex` files (the provided Makefiles generate these in a `build/` folder), and then run [scripts/program.py](scripts/program.py) with arguments `<Serial port> <Inst hex file> <Data hex file> <UART baud rate>`, which will reset the core and then upload the program.
 
 ## Notes on Synthesis
 
