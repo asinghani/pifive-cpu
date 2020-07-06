@@ -36,6 +36,8 @@ reg [31:0] rd_write;
 wire kill = take_branch | take_jump;
 
 instruction_t instr_0;
+instruction_t instr_1;
+instruction_t instr_2;
 
 wire [31:0] raw_instr;
 reg [31:0] pc = INIT_PC - 4;
@@ -88,7 +90,6 @@ decode decode (
     .o_out(instr_0)
 );
 
-instruction_t instr_1;
 
 wire [31:0] rs1_read;
 wire [31:0] rs2_read;
@@ -139,7 +140,6 @@ branch_controller branch (
 assign take_jump = instr_1.jump;
 
 reg [31:0] alu_last = 0;
-instruction_t instr_2;
 
 assign data_wdata = rs2;
 assign data_addr = (rs1 + instr_1.imm);

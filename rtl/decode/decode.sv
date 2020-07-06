@@ -3,6 +3,7 @@
 `endif
 
 `include "instruction_types.sv"
+`include "../execute/alu_ops.sv"
 
 module decode (
     input wire [31:0] i_instr,
