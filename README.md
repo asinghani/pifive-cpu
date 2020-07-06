@@ -19,34 +19,23 @@ This design has been tested for synthesis on Lattice ECP5 (using yosys+nextpnr, 
 ## Dependencies
 
 **Testbench Build Dependencies**:
-
-    - Python 3
-
-    - [Verilator](https://github.com/verilator/verilator)
-
-    - [PyVerilator](https://github.com/asinghani/pyverilator) (note - my custom fork must be used as this project relies on features that are not currently included in the upstream version of pyverilator).
-
-        - To install: `pip3 install git+https://github.com/asinghani/pyverilator`
+- Python 3
+- [Verilator](https://github.com/verilator/verilator)
+- [PyVerilator](https://github.com/asinghani/pyverilator) (note - my custom fork must be used as this project relies on features that are not currently included in the upstream version of pyverilator).
+    - To install: `pip3 install git+https://github.com/asinghani/pyverilator`
 
 **Bootloader & Software Build Dependencies**:
-
-    - [PySerial](https://github.com/pyserial/pyserial) - Required for uploading code to the CPU
-
-    - RISC-V toolchain (RV32I)
-
-    - [elf2hex](https://github.com/sifive/elf2hex)
+- [PySerial](https://github.com/pyserial/pyserial) - Required for uploading code to the CPU
+- RISC-V toolchain (RV32I)
+- [elf2hex](https://github.com/sifive/elf2hex)
 
 **Lattice ECP5 Build Dependencies**:
-
-    - [yosys](https://github.com/YosysHQ/yosys) - Open-source synthesis tool
-
-    - [nextpnr](https://github.com/YosysHQ/nextpnr) - Open-source place-and-route tool supporting ECP5
-
-    - [prjtrellis](https://github.com/SymbiFlow/prjtrellis) - Device database & bitstream generator for ECP5
+- [yosys](https://github.com/YosysHQ/yosys) - Open-source synthesis tool
+- [nextpnr](https://github.com/YosysHQ/nextpnr) - Open-source place-and-route tool supporting ECP5
+- [prjtrellis](https://github.com/SymbiFlow/prjtrellis) - Device database & bitstream generator for ECP5
 
 **Xilinx Build Dependencies**:
-
-    - Vivado - Xilinx IDE + synthesis + place-and-route tool
+- Vivado - Xilinx IDE + synthesis + place-and-route tool
 
 ## License
 
