@@ -37,14 +37,17 @@ module memory_controller
 )(
     input wire [31:0] i_inst_addr,
     output reg [31:0] o_inst_data,
+    input wire i_inst_re,
+    output reg o_inst_stall = 0,
 
     input wire [31:0] i_data_addr,
     output reg [31:0] o_data_data,
     input wire [31:0] i_data_data,
     input wire [1:0] i_data_width,
     input wire i_data_we,
-    input wire i_data_read_en,
+    input wire i_data_re,
     input wire i_data_zeroextend,
+    output reg o_data_stall = 0,
 
     output wire [31:0] o_gpio_out,
     input wire [31:0] i_gpio_in,
@@ -96,7 +99,7 @@ bram32 # (
     .INIT_FILE(DMEM_INIT)
 ) data_ram (
     .o_data(dmem_data),
-    .i_addr((i_data_read_en || i_data_we) ? i_data_addr[($clog2(DMEM_SIZE * 4) - 1):2] : r_data_addr[($clog2(DMEM_SIZE * 4) - 1):2]),
+    .i_addr((i_data_re || i_data_we) ? i_data_addr[($clog2(DMEM_SIZE * 4) - 1):2] : r_data_addr[($clog2(DMEM_SIZE * 4) - 1):2]),
     .i_data(i_data_data),
     .i_we(i_data_we && (i_data_addr[31:28] == DMEM_BASE)),
     .i_wr_subaddr(wr_subaddr),
@@ -115,7 +118,7 @@ mmio #(
     .i_addr(i_data_addr[27:2]),
     .i_data(mmio_wdata),
     .i_byte_we(mmio_byte_we),
-    .i_read_en(i_data_read_en),
+    .i_read_en(i_data_re),
     .o_data(mmio_rdata),
     .o_gpio_out(o_gpio_out),
     .i_gpio_in(i_gpio_in),
@@ -228,7 +231,7 @@ always_comb begin
 end
 
 always_ff @(posedge i_clk) begin 
-    if (i_data_read_en) begin
+    if (i_data_re) begin
         r_data_addr <= i_data_addr;
         r_data_width <= i_data_width;
         r_data_zeroextend <= i_data_zeroextend;

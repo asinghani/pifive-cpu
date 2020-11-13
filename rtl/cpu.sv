@@ -13,7 +13,9 @@ module cpu # (
     parameter CLK_FREQ = 25000000,
     parameter UART_BAUD = 115200,
 
-    parameter INIT_PC = 32'h10000000
+    parameter INIT_PC = 32'h10000000,
+
+    parameter USE_BARREL_SHIFTER = 1
 ) (
     output wire [31:0] o_gpio_out,
     input wire [31:0] i_gpio_in,
@@ -30,7 +32,10 @@ module cpu # (
     input wire i_clk
 );
 
-wire stall;
+wire alu_stall;
+wire inst_stall;
+wire data_stall;
+wire stall = alu_stall || inst_stall || data_stall;
 
 wire take_branch;
 wire take_jump;
@@ -65,14 +70,17 @@ memory_controller #(
 ) mem_controller (
     .i_inst_addr(next_pc),
     .o_inst_data(raw_instr),
+    .i_inst_re(~stall),
+    .o_inst_stall(inst_stall),
 
     .i_data_addr(data_addr),
     .o_data_data(data_rdata),
     .i_data_data(data_wdata),
     .i_data_width(data_width),
     .i_data_we(data_we),
-    .i_data_read_en(data_read_en),
+    .i_data_re(~stall && data_read_en),
     .i_data_zeroextend(data_zeroextend),
+    .o_data_stall(data_stall),
 
     .o_gpio_out(o_gpio_out),
     .i_gpio_in(i_gpio_in),
@@ -118,16 +126,21 @@ regfile regfile (
 wire [31:0] alu_A = (instr_1.rs1_pc) ? instr_1.pc : rs1;
 wire [31:0] alu_B = (instr_1.rs2_imm) ? instr_1.imm : rs2;
 
+// One cycle delay across ALU
 wire [31:0] alu_out;
-wire [31:0] alu_sum;
-alu alu (
+wire alu_valid;
+assign alu_stall = ~alu_valid;
+alu #(
+    .USE_BARREL_SHIFTER(USE_BARREL_SHIFTER)
+) alu (
     .i_op(instr_1.alu_op),
     .i_A(alu_A),
     .i_B(alu_B),
     .o_out(alu_out),
-    .o_sum(alu_sum),
-    .stall(stall),
-    .i_clk(i_clk)
+    .i_valid(~stall),
+    .o_valid(alu_valid),
+    .i_clk(i_clk),
+    .i_rst(i_rst)
 );
 
 wire branch_out;
@@ -140,8 +153,6 @@ branch_controller branch (
 );
 
 assign take_jump = instr_1.jump;
-
-reg [31:0] alu_last = 0;
 
 assign data_wdata = rs2;
 assign data_addr = (rs1 + instr_1.imm);
@@ -158,7 +169,7 @@ always_comb begin
         rd_write = data_rdata;
     end
     else begin
-        rd_write = alu_last;
+        rd_write = alu_out;
     end
 end
 
@@ -170,7 +181,7 @@ always_comb begin
         next_pc = pc;
     end
     else if (take_jump | take_branch) begin
-        next_pc = alu_sum;
+        next_pc = alu_A + alu_B;
     end
     else begin
         next_pc = pc + 4;
@@ -185,7 +196,6 @@ end
 always_ff @(posedge i_clk) begin
     if (~stall) begin
         instr_2 <= i_rst ? 0 : instr_1;
-        alu_last <= i_rst ? 0 : alu_out;
         pc <= next_pc;
     end
 end
