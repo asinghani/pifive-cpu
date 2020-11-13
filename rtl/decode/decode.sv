@@ -47,6 +47,7 @@ always_comb begin
 
     o_out.pc = i_pc;
 
+    // Default to something simple which won't stall
     o_out.alu_op = 0;
     o_out.imm = 0;
 
