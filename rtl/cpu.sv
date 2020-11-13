@@ -30,12 +30,12 @@ module cpu # (
     input wire i_clk
 );
 
+wire stall;
+
 wire take_branch;
 wire take_jump;
 reg [31:0] rd_write;
-wire kill = take_branch | take_jump;
 
-instruction_t instr_0;
 instruction_t instr_1;
 instruction_t instr_2;
 
@@ -87,7 +87,7 @@ memory_controller #(
 decode decode (
     .i_instr(raw_instr),
     .i_pc(pc),
-    .o_out(instr_0)
+    .o_out(instr_1)
 );
 
 
@@ -101,7 +101,7 @@ wire [31:0] rs1 = fwd1 ? rd_write : rs1_read;
 wire [31:0] rs2 = fwd2 ? rd_write : rs2_read;
 
 regfile regfile (
-    .i_rd_addr(instr_2.rd_addr),
+    .i_rd_addr(stall ? 0 : instr_2.rd_addr),
     .i_rd_data(rd_write),
     .i_rs1_addr(instr_1.rs1_addr),
     .o_rs1_data(rs1_read),
@@ -125,7 +125,9 @@ alu alu (
     .i_A(alu_A),
     .i_B(alu_B),
     .o_out(alu_out),
-    .o_sum(alu_sum)
+    .o_sum(alu_sum),
+    .stall(stall),
+    .i_clk(i_clk)
 );
 
 wire branch_out;
@@ -144,8 +146,8 @@ reg [31:0] alu_last = 0;
 assign data_wdata = rs2;
 assign data_addr = (rs1 + instr_1.imm);
 assign data_width = instr_1.loadstore[1:0];
-assign data_we = (instr_1.loadstore > 4);
-assign data_read_en = ((instr_1.loadstore > 0) && (instr_1.loadstore < 4));
+assign data_we = ~stall && (instr_1.loadstore > 4);
+assign data_read_en = ~stall && ((instr_1.loadstore > 0) && (instr_1.loadstore < 4));
 assign data_zeroextend = instr_1.load_zeroextend;
 
 always_comb begin
@@ -164,6 +166,9 @@ always_comb begin
     if (i_rst) begin
         next_pc = INIT_PC;
     end
+    else if (stall) begin
+        next_pc = pc;
+    end
     else if (take_jump | take_branch) begin
         next_pc = alu_sum;
     end
@@ -178,11 +183,11 @@ initial begin
 end
 
 always_ff @(posedge i_clk) begin
-    instr_1 <= (kill | i_rst) ? 0 : instr_0;
-    instr_2 <= i_rst ? 0 : instr_1;
-    alu_last <= i_rst ? 0 : alu_out;
-
-    pc <= next_pc;
+    if (~stall) begin
+        instr_2 <= i_rst ? 0 : instr_1;
+        alu_last <= i_rst ? 0 : alu_out;
+        pc <= next_pc;
+    end
 end
 
 `ifdef VERIFICATION

@@ -96,7 +96,7 @@ bram32 # (
     .INIT_FILE(DMEM_INIT)
 ) data_ram (
     .o_data(dmem_data),
-    .i_addr(i_data_addr[($clog2(DMEM_SIZE * 4) - 1):2]),
+    .i_addr((i_data_read_en || i_data_we) ? i_data_addr[($clog2(DMEM_SIZE * 4) - 1):2] : r_data_addr[($clog2(DMEM_SIZE * 4) - 1):2]),
     .i_data(i_data_data),
     .i_we(i_data_we && (i_data_addr[31:28] == DMEM_BASE)),
     .i_wr_subaddr(wr_subaddr),
@@ -228,9 +228,11 @@ always_comb begin
 end
 
 always_ff @(posedge i_clk) begin 
-    r_data_addr <= i_data_addr;
-    r_data_width <= i_data_width;
-    r_data_zeroextend <= i_data_zeroextend;
+    if (i_data_read_en) begin
+        r_data_addr <= i_data_addr;
+        r_data_width <= i_data_width;
+        r_data_zeroextend <= i_data_zeroextend;
+    end
     r_inst_addr <= i_inst_addr;
 
     valid <= 1;
