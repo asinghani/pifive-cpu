@@ -8,7 +8,7 @@ WIDTH = 80
 TEST_DIR = "sim_build"
 TEST_PACKAGE = "tests"
 
-TESTS = ["test_riscv_isa", "test_uart", "test_bootloader"]
+TESTS = ["test_riscv_isa"]
 
 if len(sys.argv) > 1:
     targets = sys.argv[1:]

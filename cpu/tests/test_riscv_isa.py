@@ -4,8 +4,8 @@ import os
 import sys
 from .programtestbench import ProgramTestbench
 
-os.system("make -C ../software/tests/riscv-tests clean")
-os.system("make -C ../software/tests/riscv-tests all")
+os.system("make -C ../../software/tests/riscv-tests clean")
+os.system("make -C ../../software/tests/riscv-tests all")
 
 NOOP = 0
 SKIP = []
@@ -13,7 +13,7 @@ SKIP = []
 tests = []
 max_prog_len = 0
 max_data_len = 0
-for test in glob.glob("../software/tests/riscv-tests/build/hex/*-inst.hex"):
+for test in glob.glob("../../software/tests/riscv-tests/build/hex/*-inst.hex"):
     name = os.path.splitext(os.path.basename(test))[0].replace("-inst", "")
 
     if name in SKIP:
@@ -48,7 +48,7 @@ for name, program, data in tests:
         print("See software/tests/riscv-tests/build/dump/{}.dump for disassembly".format(name))
         print("See sim_build/{}.vcd for waveforms".format("riscv_isa_"+name), flush=True)
 
-        os.system("sed -n '/<test_{}>/,/<fail>/p' ../software/tests/riscv-tests/build/dump/{}.dump".format(result >> 1, name))
+        os.system("sed -n '/<test_{}>/,/<fail>/p' ../../software/tests/riscv-tests/build/dump/{}.dump".format(result >> 1, name))
 
         sys.exit(1)
 
