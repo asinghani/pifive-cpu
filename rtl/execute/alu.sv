@@ -47,9 +47,10 @@ always_ff @(posedge i_clk) begin
         case (op)
             // TODO temporary hack, fix this
             `ALU_ADD: begin
-                next <= i_A + (sp ? (~i_B + 1) : i_B);
-                next_valid <= 1;
-                o_valid <= 0;
+                o_out <= i_A + (sp ? (~i_B + 1) : i_B);
+                //next <= i_A + (sp ? (~i_B + 1) : i_B);
+                //next_valid <= 1;
+                //o_valid <= 0;
             end
             `ALU_XOR:  o_out <= i_A ^ i_B;
             `ALU_OR:   o_out <= i_A | i_B;

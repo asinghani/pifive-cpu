@@ -1,32 +1,16 @@
 `default_nettype none
 
-module cpu # (
-    parameter BROM_SIZE = 512,
-    parameter BROM_INIT = "",
-
-    parameter IMEM_SIZE = 512,
-    parameter IMEM_INIT = "",
-
-    parameter DMEM_SIZE = 512,
-    parameter DMEM_INIT = "",
-
-    parameter CLK_FREQ = 25000000,
-    parameter UART_BAUD = 115200,
-
+module cpu #(
     parameter INIT_PC = 32'h10000000,
-
     parameter USE_BARREL_SHIFTER = 1
 ) (
-    output wire [31:0] o_gpio_out,
-    input wire [31:0] i_gpio_in,
-
 `ifdef VERIFICATION
     output wire [31:0] d_regs_out[0:31],
     output wire [31:0] d_finished_instruction,
 `endif
 
-    output wire o_tx,
-    input wire i_rx,
+    Wishbone.Controller instr_wb,
+    Wishbone.Controller data_wb,
 
     input wire i_rst,
     input wire i_clk
@@ -56,37 +40,36 @@ wire data_we;
 wire data_read_en;
 wire data_zeroextend;
 
-memory_controller #(
-    .BROM_INIT(BROM_INIT),
-    .BROM_SIZE(BROM_SIZE),
+wire [31:0] pc_req;
+imembus imembus (
+    .wb(instr_wb),
 
-    .IMEM_INIT(IMEM_INIT),
-    .IMEM_SIZE(IMEM_SIZE),
+    .i_addr(next_pc),
+    .o_data(raw_instr),
+    .o_read_addr(pc_req),
+    .i_re(~stall),
+    .o_stall(inst_stall),
+    .o_error(),
+    .o_unaligned(),
 
-    .DMEM_INIT(DMEM_INIT),
-    .DMEM_SIZE(DMEM_SIZE),
-    .CLK_FREQ(CLK_FREQ),
-    .UART_BAUD(UART_BAUD)
-) mem_controller (
-    .i_inst_addr(next_pc),
-    .o_inst_data(raw_instr),
-    .i_inst_re(~stall),
-    .o_inst_stall(inst_stall),
+    .i_clk(i_clk),
+    .i_rst(i_rst)
+);
 
-    .i_data_addr(data_addr),
-    .o_data_data(data_rdata),
-    .i_data_data(data_wdata),
-    .i_data_width(data_width),
-    .i_data_we(data_we),
-    .i_data_re(~stall && data_read_en),
-    .i_data_zeroextend(data_zeroextend),
-    .o_data_stall(data_stall),
+dmembus_alignedonly dmembus (
+    .wb(data_wb),
+    .o_bus_width_hint(),
 
-    .o_gpio_out(o_gpio_out),
-    .i_gpio_in(i_gpio_in),
-
-    .o_tx(o_tx),
-    .i_rx(i_rx),
+    .i_addr(data_addr),
+    .o_data(data_rdata),
+    .i_data(data_wdata),
+    .i_width(data_width),
+    .i_we(data_we),
+    .i_re(~stall && data_read_en),
+    .i_zeroextend(data_zeroextend),
+    .o_stall(data_stall),
+    .o_error(),
+    .o_unaligned(),
 
     .i_clk(i_clk),
     .i_rst(i_rst)
@@ -94,7 +77,7 @@ memory_controller #(
 
 decode decode (
     .i_instr(raw_instr),
-    .i_pc(pc),
+    .i_pc(pc_req),
     .o_out(instr_1)
 );
 
@@ -103,8 +86,8 @@ wire [31:0] rs1_read;
 wire [31:0] rs2_read;
 
 // Forwarding
-wire fwd1 = ((instr_1.rs1_addr == instr_2.rd_addr) && (instr_2.rd_addr != 0));
-wire fwd2 = ((instr_1.rs2_addr == instr_2.rd_addr) && (instr_2.rd_addr != 0));
+wire fwd1 = ((instr_1.rs1_addr == instr_2.rd_addr) && (instr_2.rd_addr != 0) && ~stall);
+wire fwd2 = ((instr_1.rs2_addr == instr_2.rd_addr) && (instr_2.rd_addr != 0) && ~stall);
 wire [31:0] rs1 = fwd1 ? rd_write : rs1_read;
 wire [31:0] rs2 = fwd2 ? rd_write : rs2_read;
 
@@ -173,6 +156,7 @@ always_comb begin
     end
 end
 
+wire [31:0] alu_sum = alu_A + alu_B;
 always_comb begin
     if (i_rst) begin
         next_pc = INIT_PC;
@@ -181,7 +165,9 @@ always_comb begin
         next_pc = pc;
     end
     else if (take_jump | take_branch) begin
-        next_pc = alu_A + alu_B;
+        // Jumps and branches should ignore low bit of PC, to align to 16-bit
+        // bound
+        next_pc = {alu_sum[31:1], 1'b0};
     end
     else begin
         next_pc = pc + 4;

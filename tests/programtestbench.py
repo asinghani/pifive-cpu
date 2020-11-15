@@ -17,21 +17,15 @@ class ProgramTestbench:
     """
         Initialize the testbench, CPU, and memories
     """
-    def __init__(self, test_name, program=[], imem_init=[], dmem_init=[], imem_size=512, dmem_size=512, custom_params={}):
+    def __init__(self, test_name, program=[], dmem_init=[], dmem_size=512, custom_params={}):
         brom_data = program + [NOOP] * 8
         brom_size = len(brom_data)
 
-        imem_data = imem_init
-        imem_size = max(len(imem_data) + 8, imem_size)
-
         dmem_data = dmem_init
         dmem_size = max(len(dmem_data) + 8, dmem_size)
-        
+
         with open("/tmp/brom_data.txt", "w+") as f:
             f.writelines(["{0:036b}\n".format(x) for x in brom_data])
-
-        with open("/tmp/imem_data.txt", "w+") as f:
-            f.writelines(["{0:036b}\n".format(x) for x in imem_data])
 
         with open("/tmp/dmem_data.txt", "w+") as f:
             f.writelines(["{0:036b}\n".format(x) for x in dmem_data])
@@ -39,16 +33,14 @@ class ProgramTestbench:
         build_params = {
             "BROM_INIT": "/tmp/brom_data.txt",
             "BROM_SIZE": brom_size,
-            "IMEM_INIT": "/tmp/imem_data.txt",
-            "IMEM_SIZE": imem_size,
             "DMEM_INIT": "/tmp/dmem_data.txt",
             "DMEM_SIZE": dmem_size
         }
 
         self.tb = Testbench("build/top.v", test_name,
-                       verilator_args=["-O3", "--top-module", "cpu", "-Wno-MULTITOP"],
+                       verilator_args=["-O3", "--top-module", "test_soc", "-Wno-MULTITOP"],
                        params={**build_params, **custom_params},
-                       verilog_module_name="cpu")
+                       verilog_module_name="test_soc")
 
         self.dut = self.tb.dut
 
@@ -93,4 +85,4 @@ class ProgramTestbench:
             if self.dut.o_gpio_out != 0:
                 break
 
-        return self.dut.o_gpio_out
+        return self.dut.o_gpio_out, cycle
