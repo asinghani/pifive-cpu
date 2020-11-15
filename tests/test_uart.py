@@ -1,3 +1,5 @@
+raise ValueError("Legacy test, do not use")
+
 from .testbench import Testbench, asserteq
 import os
 import random

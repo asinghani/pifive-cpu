@@ -1,3 +1,5 @@
+raise NotImplementedError("Legacy test, not implemented")
+
 from .testbench import Testbench, asserteq
 import os
 import random
