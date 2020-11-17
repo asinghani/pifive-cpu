@@ -37,7 +37,7 @@ class ProgramTestbench:
             "DMEM_SIZE": dmem_size
         }
 
-        self.tb = Testbench("build/top.v", test_name,
+        self.tb = Testbench("build/top_verif.v", test_name,
                        verilator_args=["-O3", "--top-module", "test_soc", "-Wno-MULTITOP"],
                        params={**build_params, **custom_params},
                        verilog_module_name="test_soc")

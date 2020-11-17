@@ -62,6 +62,8 @@ cpu #(
     .instr_wb(instr_wb.Controller),
     .data_wb(data_wb.Controller),
 
+    .i_disable(0),
+
 `ifdef VERIFICATION
     .d_regs_out(d_regs_out),
     .d_finished_instruction(d_finished_instruction),

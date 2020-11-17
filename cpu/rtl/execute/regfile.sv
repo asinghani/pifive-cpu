@@ -1,6 +1,8 @@
 `default_nettype none
 
-module regfile (
+module regfile #(
+    parameter RESET_REGS = 1  
+) (
     input wire [4:0] i_rd_addr,
     input wire [31:0] i_rd_data,
 
@@ -12,6 +14,7 @@ module regfile (
 
     output wire [31:0] d_regs_out[0:31],
 
+    input wire i_rst,
     input wire i_clk
 );
 
@@ -25,7 +28,10 @@ assign o_rs1_data = (i_rs1_addr == 0) ? (0) : (registers[i_rs1_addr]);
 assign o_rs2_data = (i_rs2_addr == 0) ? (0) : (registers[i_rs2_addr]);
 
 always_ff @(posedge i_clk) begin
-    if (i_rd_addr != 0) begin
+    if (i_rst) begin
+        if (RESET_REGS) registers <= 0;
+    end
+    else if (i_rd_addr != 0) begin
         registers[i_rd_addr] <= i_rd_data;
     end
 end

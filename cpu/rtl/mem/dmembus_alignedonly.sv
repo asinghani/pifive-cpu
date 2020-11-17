@@ -17,7 +17,7 @@ module dmembus_alignedonly (
     input wire i_we,
     input wire i_re,
     input wire i_zeroextend,
-    output wire o_stall = 0,
+    output wire o_stall,
     output wire o_error,
     output reg o_unaligned = 0,
 
@@ -27,7 +27,7 @@ module dmembus_alignedonly (
 
 reg started;
 wire in_progress = started && ~(wb.ack || wb.err);
-assign o_stall = in_progress;
+assign o_stall = in_progress && ~(wb.ack || wb.err);
 
 wire i_req = i_we || i_re;
 
@@ -59,8 +59,10 @@ always_ff @(posedge i_clk) if (wb.ack) r_data_rd <= aligned_recv_data;
 wire [31:0] l_data_rd = wb.ack ? aligned_recv_data : r_data_rd;
 assign o_data = l_data_rd;
 
-assign wb.cyc = wb.stb || in_progress;
-assign wb.stb = ~unaligned && (i_req && ~in_progress) && ~i_rst;
+//assign wb.cyc = wb.stb || in_progress;
+wire stb = ~unaligned && (i_req && ~in_progress) && ~i_rst;
+assign wb.cyc = stb || in_progress;
+assign wb.stb = wb.cyc;
 
 reg r_err;
 always_ff @(posedge i_clk) begin 

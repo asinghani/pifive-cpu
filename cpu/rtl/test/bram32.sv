@@ -29,9 +29,11 @@ reg [35:0] ram[0:(DEPTH - 1)];
 
 // Initialization
 initial begin
+`ifdef VERIFICATION
     if ((DEPTH % 512) != 0) begin
         $error("Depth must be a multiple of 512");
     end
+`endif
 
     if (|INIT_FILE) begin
         $readmemb(INIT_FILE, ram);

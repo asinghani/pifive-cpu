@@ -12,6 +12,7 @@ module cpu #(
     Wishbone.Controller instr_wb,
     Wishbone.Controller data_wb,
 
+    input wire i_disable,
     input wire i_rst,
     input wire i_clk
 );
@@ -19,7 +20,9 @@ module cpu #(
 wire alu_stall;
 wire inst_stall;
 wire data_stall;
-wire stall = alu_stall || inst_stall || data_stall;
+wire stall = alu_stall || data_stall || i_disable;
+
+wire inst_valid;
 
 wire take_branch;
 wire take_jump;
@@ -31,6 +34,7 @@ instruction_t instr_2;
 wire [31:0] raw_instr;
 reg [31:0] pc = INIT_PC - 4;
 reg [31:0] next_pc;
+reg first;
 
 wire [31:0] data_addr;
 wire [31:0] data_rdata;
@@ -47,8 +51,9 @@ imembus imembus (
     .i_addr(next_pc),
     .o_data(raw_instr),
     .o_read_addr(pc_req),
-    .i_re(~stall),
+    .i_re(~(stall || inst_stall)),
     .o_stall(inst_stall),
+    .o_valid(inst_valid),
     .o_error(),
     .o_unaligned(),
 
@@ -76,7 +81,7 @@ dmembus_alignedonly dmembus (
 );
 
 decode decode (
-    .i_instr(raw_instr),
+    .i_instr(inst_stall ? 32'h13 : raw_instr),
     .i_pc(pc_req),
     .o_out(instr_1)
 );
@@ -103,7 +108,8 @@ regfile regfile (
     .d_regs_out(d_regs_out),
 `endif
 
-    .i_clk(i_clk)
+    .i_clk(i_clk),
+    .i_rst(i_rst)
 );
 
 wire [31:0] alu_A = (instr_1.rs1_pc) ? instr_1.pc : rs1;
@@ -156,12 +162,17 @@ always_comb begin
     end
 end
 
+always_ff @(posedge i_clk) begin
+    if (i_rst) first <= 1;
+    else if (inst_valid) first <= 0;
+end
+
 wire [31:0] alu_sum = alu_A + alu_B;
 always_comb begin
-    if (i_rst) begin
+    if (i_rst || first) begin
         next_pc = INIT_PC;
     end
-    else if (stall) begin
+    else if (stall || inst_stall) begin
         next_pc = pc;
     end
     else if (take_jump | take_branch) begin
