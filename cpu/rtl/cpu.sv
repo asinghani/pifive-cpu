@@ -2,7 +2,8 @@
 
 module cpu #(
     parameter INIT_PC = 32'h10000000,
-    parameter USE_BARREL_SHIFTER = 1
+    parameter USE_BARREL_SHIFTER = 1,
+    parameter WISHBONE_PIPELINED = 0
 ) (
 `ifdef VERIFICATION
     output wire [31:0] d_regs_out[0:31],
@@ -45,40 +46,86 @@ wire data_read_en;
 wire data_zeroextend;
 
 wire [31:0] pc_req;
-imembus imembus (
-    .wb(instr_wb),
 
-    .i_addr(next_pc),
-    .o_data(raw_instr),
-    .o_read_addr(pc_req),
-    .i_re(~(stall || inst_stall)),
-    .o_stall(inst_stall),
-    .o_valid(inst_valid),
-    .o_error(),
-    .o_unaligned(),
+generate
+    if (WISHBONE_PIPELINED) begin
+        imembus_wbp imembus (
+            .wb(instr_wb),
 
-    .i_clk(i_clk),
-    .i_rst(i_rst)
-);
+            .i_addr(next_pc),
+            .o_data(raw_instr),
+            .o_read_addr(pc_req),
+            .i_re(~(stall || inst_stall)),
+            .o_stall(inst_stall),
+            .o_valid(inst_valid),
+            .o_error(),
+            .o_unaligned(),
 
-dmembus_alignedonly dmembus (
-    .wb(data_wb),
-    .o_bus_width_hint(),
+            .i_clk(i_clk),
+            .i_rst(i_rst)
+        );
+    end
+    else begin
+        imembus_wbc imembus (
+            .wb(instr_wb),
 
-    .i_addr(data_addr),
-    .o_data(data_rdata),
-    .i_data(data_wdata),
-    .i_width(data_width),
-    .i_we(data_we),
-    .i_re(~stall && data_read_en),
-    .i_zeroextend(data_zeroextend),
-    .o_stall(data_stall),
-    .o_error(),
-    .o_unaligned(),
+            .i_addr(next_pc),
+            .o_data(raw_instr),
+            .o_read_addr(pc_req),
+            .i_re(~(stall || inst_stall)),
+            .o_stall(inst_stall),
+            .o_valid(inst_valid),
+            .o_error(),
+            .o_unaligned(),
 
-    .i_clk(i_clk),
-    .i_rst(i_rst)
-);
+            .i_clk(i_clk),
+            .i_rst(i_rst)
+        );
+    end
+endgenerate
+
+generate
+    if (WISHBONE_PIPELINED) begin
+        dmembus_wbp_alignedonly dmembus (
+            .wb(data_wb),
+            .o_bus_width_hint(),
+
+            .i_addr(data_addr),
+            .o_data(data_rdata),
+            .i_data(data_wdata),
+            .i_width(data_width),
+            .i_we(data_we),
+            .i_re(~stall && data_read_en),
+            .i_zeroextend(data_zeroextend),
+            .o_stall(data_stall),
+            .o_error(),
+            .o_unaligned(),
+
+            .i_clk(i_clk),
+            .i_rst(i_rst)
+        );
+    end
+    else begin
+        dmembus_wbc_alignedonly dmembus (
+            .wb(data_wb),
+            .o_bus_width_hint(),
+
+            .i_addr(data_addr),
+            .o_data(data_rdata),
+            .i_data(data_wdata),
+            .i_width(data_width),
+            .i_we(data_we),
+            .i_re(~stall && data_read_en),
+            .i_zeroextend(data_zeroextend),
+            .o_stall(data_stall),
+            .o_error(),
+            .o_unaligned(),
+
+            .i_clk(i_clk),
+            .i_rst(i_rst)
+        );
+    end
+endgenerate
 
 decode decode (
     .i_instr(inst_stall ? 32'h13 : raw_instr),

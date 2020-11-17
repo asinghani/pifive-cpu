@@ -117,9 +117,10 @@ class NArbiter(Module):
         self.comb += self.rr.request.eq(Cat(*reqs))
 
 class NInterconnectShared(Module):
-    def __init__(self, masters, slaves, register=False):
-        shared = wb.Interface()
-        self.submodules.arbiter = NArbiter(masters, shared)
+    def __init__(self, masters, slaves, shared=None, register=False):
+        if shared is None:
+            shared = wb.Interface()
+        self.submodules.arbiter = wb.Arbiter(masters, shared)
         self.submodules.decoder = wb.Decoder(shared, slaves, register)
 
 
@@ -248,4 +249,6 @@ class GenericSoC(Module):
         if self.crossbar:
             self.submodules.wb_con = wb_con = wb.Crossbar(masters, slaves, register=self.wishbone_delay_register)
         else:
-            self.submodules.wb_con = wb_con = NInterconnectShared(masters, slaves, register=self.wishbone_delay_register)
+            #self.submodules.wb_con = wb_con = NInterconnectShared(masters, slaves, register=self.wishbone_delay_register)
+            shared = wb.Interface(data_width=self.data_width, adr_width=self.adr_width)
+            self.submodules.wb_con = wb_con = NInterconnectShared(masters, slaves, shared=shared, register=self.wishbone_delay_register)

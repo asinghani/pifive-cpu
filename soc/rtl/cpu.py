@@ -39,5 +39,6 @@ class CPU(Module):
             i_i_clk=ClockSignal(),
             i_i_rst=ResetSignal(),
 
-            p_USE_BARREL_SHIFTER=use_barrel_shifter
+            p_USE_BARREL_SHIFTER=use_barrel_shifter,
+            p_WISHBONE_PIPELINED=0
         )

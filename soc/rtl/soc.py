@@ -32,13 +32,13 @@ class SoC(GenericSoC):
             "uart": (lambda x: (x >= 0x8000_1000) & (x < 0x8000_2000), lambda x: x - 0x8000_1000),
         }[name]
 
-    def __init__(self, platform, sys_clk_freq=20e6):
+    def __init__(self, platform, sys_clk_freq=35e6):
         sys_clk_freq = int(sys_clk_freq)
         super().__init__(
             platform, sys_clk_freq,
             data_width=32, adr_width=32,
             csr_delay_register=True,
-            wishbone_delay_register=True,
+            wishbone_delay_register=False,
             crossbar=True
         )
 

@@ -57,7 +57,8 @@ wbram_withgpio #(
 
 cpu #(
     .INIT_PC(INIT_PC),
-    .USE_BARREL_SHIFTER(USE_BARREL_SHIFTER)
+    .USE_BARREL_SHIFTER(USE_BARREL_SHIFTER),
+    .WISHBONE_PIPELINED(1)
 ) cpu (
     .instr_wb(instr_wb.Controller),
     .data_wb(data_wb.Controller),

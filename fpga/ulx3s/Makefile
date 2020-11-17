@@ -1,6 +1,6 @@
 VERILOG_TOP=top_ulx3s
 CONSTRAINTS_FILE=constraints.lpf
-CLK_FREQ=20 #Mhz
+CLK_FREQ=35 #Mhz
 
 REMOTE_MACHINE=anish@anish-MBP.local
 

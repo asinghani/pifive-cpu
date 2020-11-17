@@ -1,6 +1,6 @@
 `default_nettype none
 
-module imembus (
+module imembus_wbp (
     Wishbone.Controller wb,
 
     input wire [31:0] i_addr,
@@ -24,7 +24,7 @@ reg first;
 assign o_valid = (~first || wb.ack || wb.err) && ~o_stall;
 
 reg started;
-wire in_progress = started; // && ~(wb.ack || wb.err);
+wire in_progress = started && ~(wb.ack || wb.err);
 assign o_stall = in_progress && ~(wb.ack || wb.err);
 
 reg [31:0] r_addr;
@@ -54,10 +54,9 @@ assign o_error = l_err;
 
 wire unaligned = i_re && i_addr[1:0] != 0;
 
-//assign wb.cyc = wb.stb || in_progress;
 wire stb = ~unaligned && (i_re && ~in_progress) && ~i_rst;
 assign wb.cyc = stb || in_progress;
-assign wb.stb = wb.cyc;
+assign wb.stb = stb;
 
 always_ff @(posedge i_clk) begin
     if (i_rst) begin

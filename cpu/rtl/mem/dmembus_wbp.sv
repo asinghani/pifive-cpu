@@ -1,6 +1,6 @@
 `default_nettype none
 
-module dmembus (
+module dmembus_wbp (
     Wishbone.Controller wb,
 
     // Can be used by wishbone controller or ignored
@@ -56,7 +56,7 @@ assign o_data = l_data_rd;
 
 wire stb = (i_req && ~in_progress) && ~i_rst;
 assign wb.cyc = stb || in_progress;
-assign wb.stb = stb;//wb.cyc;
+assign wb.stb = stb;
 
 reg r_err;
 always_ff @(posedge i_clk) begin 
