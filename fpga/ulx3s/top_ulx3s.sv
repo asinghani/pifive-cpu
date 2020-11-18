@@ -7,6 +7,10 @@ module top_ulx3s (
 	output wire [7:0] led,
 	input wire [5:0] btn,
 
+	inout wire [3:0] flash_dq,
+	output wire flash_clk,
+	output wire flash_cs_n,
+
 	input wire i_clk25,
 	input wire i_rst_n
 );

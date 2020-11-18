@@ -4,7 +4,7 @@ module wbram_withgpio
 #(
     parameter BASE_ADDR = 32'h00000000,
     parameter DEPTH_WORDS = 512,
-    parameter INIT_FILE = "",
+    parameter [1023:0] INIT_FILE = "",
     localparam ADDR_WIDTH = $clog2(DEPTH_WORDS),
 
     parameter GPIO_ADDR = 32'h80000000,
@@ -60,7 +60,7 @@ always_ff @(posedge i_clk) begin
                 if (wb.sel[3]) ram[addr][31:24] <= wb.data_wr[31:24];
 
                 if (LATENCY == 0) wb.ack <= 1;
-                else ctr <= LATENCY;
+                else ctr <= LATENCY[$clog2(LATENCY):0];
             end
             else begin
                 r_addr <= addr;
@@ -69,7 +69,7 @@ always_ff @(posedge i_clk) begin
                     wb.ack <= 1;
                 end
                 else begin
-                    ctr <= LATENCY;
+                    ctr <= LATENCY[$clog2(LATENCY):0];
                 end
             end
         end

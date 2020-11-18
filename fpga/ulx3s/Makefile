@@ -1,6 +1,6 @@
 VERILOG_TOP=top_ulx3s
 CONSTRAINTS_FILE=constraints.lpf
-CLK_FREQ=35 #Mhz
+CLK_FREQ=25 #Mhz
 
 REMOTE_MACHINE=anish@anish-MBP.local
 
@@ -25,9 +25,9 @@ all: ecppack
 .PHONY: build/top_generic.v
 build/top_generic.v:
 	mkdir -p build
-	make -C ../../soc build/top.v
-	cp ../../soc/build/top.v build/top_generic.v
-	cp ../../soc/build/*.init build/
+	make -C ../../soc-fpga build/top.v
+	cp ../../soc-fpga/build/top.v build/top_generic.v
+	cp ../../soc-fpga/build/*.init build/
 
 # Generate PLL
 .PHONY: build/pll.v

@@ -1,7 +1,9 @@
 TARGET=
 
-VERILOG_PATH=-not -path "./build/*" -not -path "./sim_build/*" -not -path "./rtl/legacy/*"
+VERILOG_PATH=-not -path "./build/*" -not -path "./sim_build/*" -not -path "./rtl/legacy/*" -not -name "test_soc.sv"
 VERILOG_SOURCES=$(shell find . $(VERILOG_PATH) -name "*.v") $(shell find . $(VERILOG_PATH) -name "*.sv")
+VERILOG_TEST_PATH=-not -path "./build/*" -not -path "./sim_build/*" -not -path "./rtl/legacy/*"
+VERILOG_TEST_SOURCES=$(shell find . $(VERILOG_TEST_PATH) -name "*.v") $(shell find . $(VERILOG_TEST_PATH) -name "*.sv")
 PYTHON_SOURCES=$(wildcard *.py) $(wildcard **/*.py)
 
 .PHONY: test
@@ -20,8 +22,8 @@ clean:
 
 build/top.v: $(VERILOG_SOURCES)
 	mkdir -p build
-	sv2v $(VERILOG_SOURCES) --exclude=assert > build/top.v
+	sv2v -v $(VERILOG_SOURCES) --exclude=assert > build/top.v
 
-build/top_verif.v: $(VERILOG_SOURCES)
+build/top_verif.v: $(VERILOG_TEST_SOURCES)
 	mkdir -p build
-	sv2v $(VERILOG_SOURCES) --exclude=assert --define=VERIFICATION --define=VERILATOR > build/top_verif.v
+	sv2v -v $(VERILOG_TEST_SOURCES) --exclude=assert --define=VERIFICATION --define=VERILATOR > build/top_verif.v

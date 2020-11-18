@@ -10,8 +10,8 @@ module test_soc #(
     parameter DMEM_BASE = 4'h4,
     parameter PERI_BASE = 4'h8,
 
-    parameter BROM_INIT = "",
-    parameter DMEM_INIT = "",
+    parameter [1023:0] BROM_INIT = "",
+    parameter [1023:0] DMEM_INIT = "",
 
     parameter INIT_PC = 32'h10000000,
     parameter USE_BARREL_SHIFTER = 1

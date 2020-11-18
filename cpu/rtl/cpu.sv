@@ -48,7 +48,7 @@ wire data_zeroextend;
 wire [31:0] pc_req;
 
 generate
-    if (WISHBONE_PIPELINED) begin
+    if (|WISHBONE_PIPELINED) begin
         imembus_wbp imembus (
             .wb(instr_wb),
 
@@ -85,7 +85,7 @@ generate
 endgenerate
 
 generate
-    if (WISHBONE_PIPELINED) begin
+    if (|WISHBONE_PIPELINED) begin
         dmembus_wbp_alignedonly dmembus (
             .wb(data_wb),
             .o_bus_width_hint(),
