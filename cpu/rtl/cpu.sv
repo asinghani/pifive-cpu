@@ -3,7 +3,8 @@
 module cpu #(
     parameter INIT_PC = 32'h10000000,
     parameter USE_BARREL_SHIFTER = 1,
-    parameter WISHBONE_PIPELINED = 0
+    parameter WISHBONE_PIPELINED = 0,
+    parameter INST_STALL_BUBBLE = 0
 ) (
 `ifdef VERIFICATION
     output wire [31:0] d_regs_out[0:31],
@@ -21,7 +22,7 @@ module cpu #(
 wire alu_stall;
 wire inst_stall;
 wire data_stall;
-wire stall = alu_stall || data_stall || i_disable;
+wire stall = alu_stall || data_stall || i_disable || (INST_STALL_BUBBLE ? 0 : inst_stall);
 
 wire inst_valid;
 
@@ -128,7 +129,7 @@ generate
 endgenerate
 
 decode decode (
-    .i_instr(inst_stall ? 32'h13 : raw_instr),
+    .i_instr((inst_stall && INST_STALL_BUBBLE) ? 32'h13 : raw_instr),
     .i_pc(pc_req),
     .o_out(instr_1)
 );

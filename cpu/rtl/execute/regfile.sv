@@ -29,7 +29,8 @@ assign o_rs2_data = (i_rs2_addr == 0) ? (0) : (registers[i_rs2_addr]);
 
 always_ff @(posedge i_clk) begin
     if (i_rst) begin
-        if (RESET_REGS) registers <= 0;
+        // TODO this breaks verilator for some reason
+        // if (RESET_REGS) registers <= 0;
     end
     else if (i_rd_addr != 0) begin
         registers[i_rd_addr] <= i_rd_data;

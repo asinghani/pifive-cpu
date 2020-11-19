@@ -44,7 +44,11 @@ class ProgramTestbench:
 
         self.dut = self.tb.dut
 
-        self.tb.tick()
+
+        self.dut.i_rst = 1
+        self.tb.tick(20)
+        self.dut.i_rst = 0
+        self.tb.tick(1)
 
     """
         Advance the CPU forward `n` cycles

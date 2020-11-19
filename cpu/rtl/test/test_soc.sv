@@ -74,6 +74,4 @@ cpu #(
     .i_clk(i_clk)
 );
 
-// Shared interconnect
-
 endmodule
