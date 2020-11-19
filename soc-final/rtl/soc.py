@@ -124,18 +124,30 @@ class SoC(Module):
             wb_csr_bus = wb.Interface(data_width=32, adr_width=32)
             csr_controller = csr_bus.Interface(data_width=8, address_width=14, alignment=32)
 
-            csr_addr_lookup = lambda a, mem: self.csr_address(a) - csr_addr_base
-            csr_bank_array = csr_bus.CSRBankArray(self, csr_addr_lookup, paging=1, ordering="little", soc_bus_data_width=32)
+            paging_bits = 10
+            paging = 2**(paging_bits-2)
+
+            # Verify address spacing
+            last_addr = -100000
+            for addr in sorted(self.csr_address(None)):
+                if addr - last_addr < 2**paging_bits:
+                    raise ValueError("CSR bases must have at least 0x{:x} gap".format(2**paging_bits))
+                last_addr = addr
+
+            csr_addr_lookup = lambda a, mem: (self.csr_address(a) - csr_addr_base) >> paging_bits
+            csr_bank_array = csr_bus.CSRBankArray(self, csr_addr_lookup, paging=paging, ordering="little", soc_bus_data_width=8)
             self.submodules.csr_bank_array = csr_bank_array
 
             self.submodules.csr_con = csr_bus.Interconnect(csr_controller, csr_bank_array.get_buses())
+
             wb_csr = wb.Wishbone2CSR(wb_csr_bus, csr_controller, register=True)
             self.add_mem(wb_csr, "csrs", bus=wb_csr_bus)
 
             for periph_name, csr, base_addr, regs in csr_bank_array.banks:
                 addr_map = []
+                base_addr = base_addr << paging_bits
                 for ind, reg in enumerate(regs.simple_csrs):
-                    addr = csr_addr_base + base_addr + ind
+                    addr = csr_addr_base + base_addr + (ind << 2)
                     if addr not in range(csr_addr_base, csr_addr_top):
                         raise ValueError("CSR address {:08x} for {}->{} out of range".format(addr, periph_name, reg.name))
 
@@ -188,7 +200,9 @@ class SoC(Module):
 
             if translate_fn is None:
                 if name == "periphs":
-                    translate_fn = lambda x:x
+                    translate_fn = lambda x: x
+                elif name == "csrs":
+                    translate_fn = create_translate_fn(base_addr, "word")
                 else:
                     translate_fn = create_translate_fn(base_addr, size)
 
@@ -202,7 +216,7 @@ class SoC(Module):
 
             mems.append((check_fn, controller_bus))
 
-        self.submodules.crossbar = wb.Crossbar(controllers, mems, register=self.wishbone_delay_register)
+        self.submodules.crossbar = WishboneCrossbar(controllers, mems, register=self.wishbone_delay_register)
 
         mgmt_address_map = []
         mgmt_peripherals = []

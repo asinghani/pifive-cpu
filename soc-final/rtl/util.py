@@ -65,6 +65,8 @@ class WishboneROM(Module):
         # Pack words
         data = [pack_list(x, endianness=endianness) for x in data]
 
+        print(data)
+
         self.sync += [
             self.bus.ack.eq(self.bus.cyc & self.bus.stb & ~self.bus.ack),
             self.bus.dat_r.eq(Array(data)[self.bus.adr >> 2])
@@ -96,6 +98,20 @@ class WishboneInterconnect(Module):
             shared = wb.Interface(data_width=32, adr_width=32)
         self.submodules.arbiter = wb.Arbiter(controllers, shared)
         self.submodules.decoder = wb.Decoder(shared, peripherals, register)
+
+# Based on https://github.com/enjoy-digital/litex/blob/master/litex/soc/interconnect/wishbone.py
+class WishboneCrossbar(Module):
+    def __init__(self, controllers, peripherals, register=False):
+        check_fns, periph_busses = zip(*peripherals)
+
+        # TODO allow selectively blocking specific points in crossbar
+        cross_points = [[wb.Interface(data_width=32, adr_width=32) for j in peripherals]
+                            for i in controllers]
+
+        for row, controller in zip(cross_points, controllers):
+            self.submodules += wb.Decoder(controller, list(zip(check_fns, row)), register=register)
+        for col, bus in zip(zip(*cross_points), periph_busses):
+            self.submodules += wb.Arbiter(col, bus)
 
 # N-cycle delay register
 class RegNextN(Module):
