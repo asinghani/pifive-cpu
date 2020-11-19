@@ -1,4 +1,3 @@
-
 PYTHON_SOURCES=$(shell find ./rtl -name "*.py")
 VERILOG_SOURCES=$(shell find ./rtl/verilog -name "*.v") $(shell find ./rtl/verilog -name "*.sv")
 
@@ -9,7 +8,6 @@ build/top.v: build/litex_top.v build/cpu_top.v $(VERILOG_SOURCES)
 build/top_verif.v: build/litex_top_verif.v build/cpu_top_verif.v $(VERILOG_SOURCES)
 	mkdir -p build
 	sv2v build/litex_top_verif.v build/cpu_top_verif.v $(VERILOG_SOURCES) --exclude=assert --define=VERIFICATION --define=VERILATOR > build/top_verif.v
-
 
 build/litex_top_verif.v: $(PYTHON_SOURCES)
 	mkdir -p build

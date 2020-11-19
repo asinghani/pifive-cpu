@@ -1,88 +1,241 @@
+from functools import partial
 from migen import *
+from util import *
 
+from litex.build.generic_platform import *
 from litex.soc.integration.soc_core import *
 from litex.soc.integration.builder import *
-from litex.soc.cores.uart import RS232PHY, UART
-from litex.soc.cores.gpio import GPIOIn, GPIOOut
 
 from litex.soc.interconnect import csr, csr_bus
 from litex.soc.interconnect import wishbone as wb
 
-from util import *
-from wishbone_debug_bus import *
-from wishbone_uart import *
-from cpu import *
-from wbp2wbc import *
+"""
+Quad-bus structure:
+    1. Memory bus (crossbar)
+        - Memories / Cache
+        - All controllers
+    2. Peripheral bus (shared)
+        - Low-performance peripherals
+        - Connected to memory bus
+    3. CSR bus (shared)
+        - Low-performance peripherals
+        - Connected to memory(?) bus
+    4. Management bus (shared)
+        - Debug utilities, and bridged onto main bus
+        - Controlled by external debug core
 
-class SoC(GenericSoC):
-    def csr_address_map(self, name, memory):
-        return {
-            "leds": 0x00,
-            "btns": 0x10,
-            "cpu_disable": 0x20,
-        }[name]
+Wishbone address width: 32
+Wishbone data width: 32
+CSR address width: 14
+CSR data width: 8
+"""
 
-    def wb_address_map(self, name):
-        # Format: (check_fn, translate_fn)
-        return {
-            "iram": (lambda x: (x >= 0x1000_0000) & (x < 0x2000_0000), lambda x: (x - 0x1000_0000) >> 2),
-            "dram": (lambda x: (x >= 0x4000_0000) & (x < 0x5000_0000), lambda x: (x - 0x4000_0000) >> 2),
+# add_controller
+# add_mem
+# add_periph
+# add_csr
+# add_mgmt_periph
 
-            "csr": (lambda x: (x >= 0x8000_0000) & (x < 0x8000_1000), lambda x: x - 0x8000_0000),
-            "uart": (lambda x: (x >= 0x8000_1000) & (x < 0x8000_2000), lambda x: x - 0x8000_1000),
-        }[name]
-
-    def __init__(self, platform, sys_clk_freq=35e6):
-        sys_clk_freq = int(sys_clk_freq)
-        super().__init__(
-            platform, sys_clk_freq,
-            data_width=32, adr_width=32,
-            csr_delay_register=True,
-            wishbone_delay_register=False,
-            crossbar=True
-        )
+class SoC(Module):
+    def __init__(self,
+                 platform,
+                 mgmt_controller=None,
+                 wishbone_delay_register=False):
 
         self.submodules.crg = CRG(platform.request("sys_clk"), platform.request("sys_rst"))
 
-        led = platform.request("led")
-        self.add_csr_periph(GPIOOut(led), "leds")
+        self.controllers = {}
+        self.mem_bus = {}
+        self.periph_bus = {}
+        self.csr_bus = {}
 
-        btn = platform.request("btn")
-        self.add_csr_periph(GPIOIn(btn), "btns")
-        #0x100000B7,0x30008093,0xDEADC137,0xEEF10113,0x0020A023,0x12345137,0x67810113,0x0020A223,0xABCDB137,0xBCD10113,0x0020A423,     
-        self.add_wb_slave(wb.SRAM(512, init=[0x00000113, 0x40000237, 0x00020213, 0x800001B7, 0x00018193, 0xFFF14113, 0x0021A023, 0x009890B7, 0x68008093, 0xFFF08093, 0x00122023, 0xFE104CE3, 0xFE5FF06F, 0x80000137, 0x00010113, 0x00212023], bus=wb.Interface(data_width=32, adr_width=32)), "iram")
-        self.add_wb_slave(wb.SRAM(512, init=[0xDEADBEEF], bus=wb.Interface(data_width=32, adr_width=32)), "dram")
+        if mgmt_controller is None:
+            mgmt_controller = wb.Interface(data_width=32, adr_width=32)
+        self.mgmt_controller = mgmt_controller
+        self.mgmt_bus = {}
 
-        self.add_wb_master(WishboneDebugBus(platform.request("uart0"), sys_clk_freq, baud=115200), "debugbus")
+        self.wishbone_delay_register = wishbone_delay_register
 
-        cpu = CPU()
-        #self.submodules.instr_convert = instr_convert = WBP2WBC(bus_in=cpu.instr_bus)
-        #self.submodules.data_convert = data_convert = WBP2WBC(bus_in=cpu.data_bus)
-        self.add_wb_master(cpu, "cpu_ibus", bus=cpu.instr_bus)
-        self.add_wb_master(None, "cpu_dbus", bus=cpu.data_bus)
+    def check_name(self, name):
+        if name in list(self.controllers.keys()) + list(self.mem_bus.keys()) + \
+                   list(self.periph_bus.keys()) + list(self.csr_bus.keys()) + \
+                   list(self.mgmt_bus.keys()):
+            raise ValueError("Name {} cannot be used twice".format(name))
 
-        self.add_csr_periph(GPIOOut(cpu.disable), "cpu_disable")
+    def add_controller(self, controller, name, bus=None):
+        self.check_name(name)
+        if bus is None:
+            bus = controller.bus
 
-        #self.add_wb_slave(WishboneUART(platform.request("serial1"), sys_clk_freq, baud=115200, fifo_depth=4, bus=wb.Interface(data_width=8, adr_width=16)), "uart")
-        #self.add_csr_periph(UART(phy=RS232PHY(platform.request("serial1"), sys_clk_freq, baudrate=115200), tx_fifo_depth=4, rx_fifo_depth=4, rx_fifo_rx_we=False), "uart")
+        self.controllers[name] = (controller, bus)
+        if controller is not None:
+            setattr(self.submodules, name, controller)
 
-        self.generate_bus()
+    def add_mem(self, periph, name, bus=None):
+        self.check_name(name)
+        if bus is None:
+            bus = periph.bus
 
-    @classmethod
-    def get_io(cls):
-        if getattr(cls, "io", None) is None:
-            cls.io = [
-                ("sys_clk", 0, Pins(1)),
-                ("sys_rst", 0, Pins(1)),
+        self.mem_bus[name] = (periph, bus)
+        if periph is not None:
+            setattr(self.submodules, name, periph)
 
-                ("uart0", 0,
-                    Subsignal("tx", Pins(1)),
-                    Subsignal("rx", Pins(1)),
-                ),
+    def add_periph(self, periph, name, bus=None):
+        self.check_name(name)
+        if bus is None:
+            bus = periph.bus
 
-                ("led", 0, Pins(8)),
-                ("btn", 0, Pins(6))
-            ]
+        self.periph_bus[name] = (periph, bus)
+        if periph is not None:
+            setattr(self.submodules, name, periph)
 
-        return cls.io
+    def add_csr(self, periph, name):
+        self.check_name(name)
+        self.csr_bus[name] = periph
+        setattr(self.submodules, name, periph)
 
+    def add_mgmt_periph(self, periph, name, bus=None):
+        self.check_name(name)
+        if bus is None:
+            bus = periph.bus
+
+        self.mgmt_bus[name] = (periph, bus)
+        if periph is not None:
+            setattr(self.submodules, name, periph)
+
+    def generate_bus(self):
+        if len(self.mem_bus) + len(self.csr_bus) + len(self.periph_bus) < 1:
+            raise ValueError("Must have at least one peripheral or memory in order to generate bus")
+
+        if len(self.mgmt_bus) < 1:
+            raise ValueError("Must have at least one management peripheral in order to generate bus")
+
+        if len(self.controllers) < 1:
+            raise ValueError("Must have at least one controller in order to generate bus")
+
+        cpu_address_map = [] # (addr, name) or (addr, name, [(addr, name), ...]) - all addresses are absolute
+        mgmt_address_map = []
+
+        if len(self.csr_bus) != 0:
+            csr_addr_base, csr_addr_top = self.wb_address("csrs")[0:2]
+            csr_address_map = []
+
+            # Create bridge between wishbone and CSR
+            wb_csr_bus = wb.Interface(data_width=32, adr_width=32)
+            csr_controller = csr_bus.Interface(data_width=8, address_width=14, alignment=32)
+
+            csr_addr_lookup = lambda a, mem: self.csr_address(a) - csr_addr_base
+            csr_bank_array = csr_bus.CSRBankArray(self, csr_addr_lookup, paging=1, ordering="little", soc_bus_data_width=32)
+            self.submodules.csr_bank_array = csr_bank_array
+
+            self.submodules.csr_con = csr_bus.Interconnect(csr_controller, csr_bank_array.get_buses())
+            wb_csr = wb.Wishbone2CSR(wb_csr_bus, csr_controller, register=True)
+            self.add_mem(wb_csr, "csrs", bus=wb_csr_bus)
+
+            for periph_name, csr, base_addr, regs in csr_bank_array.banks:
+                addr_map = []
+                for ind, reg in enumerate(regs.simple_csrs):
+                    addr = csr_addr_base + base_addr + ind
+                    if addr not in range(csr_addr_base, csr_addr_top):
+                        raise ValueError("CSR address {:08x} for {}->{} out of range".format(addr, periph_name, reg.name))
+
+                    addr_map.append((addr, "{} ({}b)".format(reg.name, reg.size)))
+
+                csr_address_map.append((csr_addr_base + base_addr, periph_name, addr_map))
+
+            cpu_address_map.append((csr_addr_base, "CSRs", csr_address_map))
+
+        if len(self.periph_bus) != 0:
+            periph_addr_base, periph_addr_top = self.wb_address("periphs")[0:2]
+            periph_address_map = []
+            peripherals = []
+
+            for name, periph in self.periph_bus.items():
+                controller_bus = wb.Interface(data_width=32, adr_width=32)
+                periph_bus = periph[1]
+
+                base_addr, top_addr, size, translate_fn = self.wb_address(name)
+
+                assert base_addr >= periph_addr_base and base_addr <= periph_addr_top
+                assert top_addr >= periph_addr_base and top_addr <= periph_addr_top
+
+                if translate_fn is None:
+                    translate_fn = create_translate_fn(base_addr - 0, size)
+
+                check_fn = create_check_fn(base_addr - 0, top_addr - 0)
+
+                translator = WishboneAddressTranslator(controller_bus, periph_bus, translate_fn)
+                setattr(self.submodules, name+"__translator", translator)
+
+                peripherals.append((check_fn, controller_bus))
+                periph_address_map.append((base_addr, name))
+
+            cpu_address_map.append((periph_addr_base, "Peripherals", periph_address_map))
+
+            shared = wb.Interface(data_width=32, adr_width=32)
+            periph_bridge = wb.Decoder(shared, peripherals, register=True)
+            self.add_mem(periph_bridge, "periphs", bus=shared)
+
+        assert len(self.mem_bus) >= 1
+
+        controllers = [x[1] for x in self.controllers.values()]
+        mems = []
+
+        for name, periph in self.mem_bus.items():
+            controller_bus = wb.Interface(data_width=32, adr_width=32)
+            periph_bus = periph[1]
+            base_addr, top_addr, size, translate_fn = self.wb_address(name)
+
+            if translate_fn is None:
+                if name == "periphs":
+                    translate_fn = lambda x:x
+                else:
+                    translate_fn = create_translate_fn(base_addr, size)
+
+            check_fn = create_check_fn(base_addr, top_addr)
+
+            translator = WishboneAddressTranslator(controller_bus, periph_bus, translate_fn)
+            setattr(self.submodules, name+"__translator", translator)
+
+            if name not in ["csrs", "periphs"]:
+                cpu_address_map.append((base_addr, name))
+
+            mems.append((check_fn, controller_bus))
+
+        self.submodules.crossbar = wb.Crossbar(controllers, mems, register=self.wishbone_delay_register)
+
+        mgmt_address_map = []
+        mgmt_peripherals = []
+
+        for name, periph in self.mgmt_bus.items():
+            controller_bus = wb.Interface(data_width=32, adr_width=32)
+            periph_bus = periph[1]
+
+            base_addr, top_addr, size, translate_fn = self.mgmt_address(name)
+
+            if translate_fn is None:
+                translate_fn = create_translate_fn(base_addr, size)
+
+            check_fn = create_check_fn(base_addr, top_addr)
+
+            translator = WishboneAddressTranslator(controller_bus, periph_bus, translate_fn)
+            setattr(self.submodules, name+"__translator", translator)
+
+            mgmt_peripherals.append((check_fn, controller_bus))
+            mgmt_address_map.append((base_addr, name))
+
+        self.submodules.mgmt_interconnect = wb.Decoder(self.mgmt_controller, mgmt_peripherals, register=True)
+
+        return cpu_address_map, mgmt_address_map
+
+def create_translate_fn(base, size):
+    def fn(a, b):
+        return (b - a[0])[(2 if a[1] == "word" else 0):]
+
+    return partial(fn, (base, size))
+
+def create_check_fn(base, top):
+    def fn(a, b):
+        return (b >= a[0]) & (b < a[1])
+
+    return partial(fn, (base, top))

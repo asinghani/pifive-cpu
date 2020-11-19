@@ -1,7 +1,7 @@
 from migen import *
 from litex.soc.interconnect import wishbone as wb
 
-class CPU(Module):
+class CPUWrapper(Module):
     def __init__(self, use_barrel_shifter=True):
         self.instr_bus = wb.Interface(data_width=32, adr_width=32)
         self.data_bus = wb.Interface(data_width=32, adr_width=32)

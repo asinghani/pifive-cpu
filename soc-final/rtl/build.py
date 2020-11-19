@@ -1,6 +1,8 @@
 import sys
 from util import *
-from soc import SoC
+from pifive import PiFive
+
+TOP_SOC = PiFive
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
@@ -9,10 +11,10 @@ if __name__ == "__main__":
         verif = False
 
     if verif:
-        platform_verif = VerilogPlatform(SoC.get_io())
-        soc_verif = SoC(platform_verif)
+        platform_verif = VerilogPlatform(TOP_SOC.get_io())
+        soc_verif = TOP_SOC(platform_verif)
         platform_verif.build(soc_verif, "soc", "litex_top_verif.v", "build")
     else:
-        platform = VerilogPlatform(SoC.get_io())
-        soc = SoC(platform)
+        platform = VerilogPlatform(TOP_SOC.get_io())
+        soc = TOP_SOC(platform)
         platform.build(soc, "soc", "litex_top.v", "build")
