@@ -14,6 +14,7 @@ from wishbone_debug_bus import *
 from wishbone_uart import *
 from cpu import *
 from wbp2wbc import *
+from jtag import *
 
 class SoC(GenericSoC):
     def csr_address_map(self, name, memory):
@@ -47,7 +48,7 @@ class SoC(GenericSoC):
 
         self.submodules.crg = CRG(platform.request("sys_clk"), platform.request("sys_rst"))
 
-        led = platform.request("led")
+        #led = platform.request("led")
         #self.add_csr_periph(GPIOOut(led), "leds")
 
         btn = platform.request("btn")
@@ -59,7 +60,7 @@ class SoC(GenericSoC):
         self.submodules.wbdbgbus = WishboneDebugBus(platform.request("uart0"), sys_clk_freq, baud=115200)
         cycle_counter = CycleCounter(self.wbdbgbus.bus, max=255)
         self.add_wb_master(cycle_counter, "debugbus")
-        self.comb += led.eq(cycle_counter.counter)
+        #self.comb += led.eq(cycle_counter.counter)
 
         cpu = CPU()
         #self.submodules.instr_convert = instr_convert = WBP2WBC(bus_in=cpu.instr_bus)
@@ -70,6 +71,24 @@ class SoC(GenericSoC):
         self.add_csr_periph(GPIOOut(cpu.disable), "cpu_disable")
 
         self.add_wb_slave(spi_flash.SpiFlashDualQuad(platform.request("flash"), dummy=6, div=2, with_bitbang=True, endianness="big"), "flash0")
+
+        jtag_regs = {
+            0: 32, # ID
+            1: 32, # ID
+            2: 32, # ID
+            3: 32, # LED
+            4: 32  # BTN
+        }
+        #self.submodules.jtag = JTAGTAP(platform.request("jtag"), jtag_regs, ir_width=10, sync_ffs=2)
+
+        """print(self.jtag.regs)
+        self.comb += self.jtag.regs[0].read_data.eq(0xDEADBEEF)
+        self.comb += self.jtag.regs[1].read_data.eq(0xDEADBEEF)
+        self.comb += self.jtag.regs[2].read_data.eq(0xDEADBEEF)
+        self.comb += self.jtag.regs[3].read_data.eq(led)
+        self.comb += self.jtag.regs[4].read_data.eq(btn)
+
+        self.sync += If(self.jtag.regs[3].write_valid, led.eq(self.jtag.regs[3].write_data))"""
 
         #self.add_wb_slave(WishboneUART(platform.request("serial1"), sys_clk_freq, baud=115200, fifo_depth=4, bus=wb.Interface(data_width=8, adr_width=16)), "uart")
         #self.add_csr_periph(UART(phy=RS232PHY(platform.request("serial1"), sys_clk_freq, baudrate=115200), tx_fifo_depth=4, rx_fifo_depth=4, rx_fifo_rx_we=False), "uart")
@@ -95,6 +114,13 @@ class SoC(GenericSoC):
                     Subsignal("dq", Pins(4)),
                     Subsignal("clk", Pins(1)),
                     Subsignal("cs_n", Pins(1)),
+                ),
+
+                ("jtag", 0,
+                    Subsignal("tck", Pins(1)),
+                    Subsignal("tms", Pins(1)),
+                    Subsignal("tdo", Pins(1)),
+                    Subsignal("tdi", Pins(1)),
                 ),
             ]
 

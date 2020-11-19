@@ -11,6 +11,11 @@ module top_ulx3s (
 	output wire flash_clk,
 	output wire flash_cs_n,
 
+	input wire jtag_tck,
+	input wire jtag_tms,
+	input wire jtag_tdi,
+	output wire jtag_tdo,
+
 	input wire i_clk25,
 	input wire i_rst_n
 );
@@ -27,6 +32,17 @@ soc soc (
 	.sys_clk(clk),
 	.sys_rst(~i_rst_n),
 	.*
+);
+
+JtagTest JtagTest (
+    .io_jtag_TCK(jtag_tck),
+    .io_jtag_TMS(jtag_tms),
+    .io_jtag_TDI(jtag_tdi),
+    .io_jtag_TDO_data(jtag_tdo),
+    .io_jtag_TDO_driven(),
+    .io_out0(led),
+    .io_out1(),
+    .io_out2()
 );
 
 endmodule
