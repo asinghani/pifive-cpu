@@ -4,6 +4,7 @@ from litex.soc.integration.builder import *
 from litex.soc.interconnect import wishbone as wb
 
 from litex.soc.cores.gpio import GPIOIn, GPIOOut
+from litex.soc.cores.spi import SPIMaster
 
 from soc import *
 from util import *
@@ -12,13 +13,18 @@ from wishbone_uart import *
 from wishbone_i2c import *
 from wishbone_pwm import *
 from cpu import *
+from timer import *
 
 # TODO temp - remove
 from simpleriscv import asm
 
+from litex.soc.interconnect.csr import *
+
 csr_address_map = {
     "leds":        0x8800_0000,
     "btns":        0x8800_0400,
+    "test_out":    0x8800_0800,
+    "spi0":        0x8800_0C00,
     "cpu_disable": 0x8810_0000,
 }
 
@@ -33,6 +39,10 @@ wb_address_map = {
 
     "pwm0":       (0x8000_1000, 0x8000_1010, "byte", None),
     "pwm1":       (0x8000_1010, 0x8000_1020, "byte", None),
+
+    "timer0":     (0x8000_2000, 0x8000_2020, "byte", None),
+    "timer1":     (0x8000_2020, 0x8000_2040, "byte", None),
+    "uptime":     (0x8000_2040, 0x8000_2060, "byte", None),
 
     "csrs":       (0x8800_0000, 0x8900_0000, "byte", None),
 }
@@ -69,11 +79,19 @@ io_map = [
         Subsignal("sda_oen", Pins(1)),
     ),
 
+    ("spi0", 0,
+        Subsignal("mosi", Pins(1)),
+        Subsignal("miso", Pins(1)),
+        Subsignal("clk", Pins(1)),
+    ),
+
     ("led", 0, Pins(8)),
     ("btn", 0, Pins(6)),
 
     ("gpio0", 0, Pins(1)),
     ("gpio1", 0, Pins(1)),
+
+    ("test_out", 0, Pins(8)),
 ]
 
 class PiFive(SoC):
@@ -88,12 +106,16 @@ class PiFive(SoC):
         self.add_csr(GPIOOut(platform.request("led")), "leds")
         self.add_csr(GPIOIn(platform.request("btn")), "btns")
 
+        self.add_csr(GPIOOut(platform.request("test_out")), "test_out")
+
         self.add_periph(WishbonePWM(platform.request("gpio0")), "pwm0")
         self.add_periph(WishbonePWM(platform.request("gpio1")), "pwm1")
 
         self.add_periph(WishboneROM("Test SoC User Space"), "user_ident")
         self.add_mgmt_periph(WishboneROM("Test SoC Mgmt Space"), "mgmt_ident")
 
+        self.add_csr(SPIMaster(platform.request("spi0"), data_width=8, sys_clk_freq=50000000, spi_clk_freq=1000000, mode="raw"), "spi0")
+        self.spi0.add_clk_divider()
 
         self.add_mem(WishboneROM(test_program(), nullterm=False, endianness="little"), "iram")
 
@@ -106,6 +128,10 @@ class PiFive(SoC):
         self.add_periph(WishboneUART(platform.request("uart1"), fifo_depth=4), "uart")
 
         self.add_periph(WishboneI2C(platform.request("i2c")), "i2c")
+
+        self.add_periph(UptimeTimer(), "uptime")
+        self.add_periph(Timer(), "timer0")
+        self.add_periph(Timer(), "timer1")
 
         self.add_controller(WishboneDebugBus(platform.request("uart0"), tmp_clk, baud=115200), "debugbus")
 

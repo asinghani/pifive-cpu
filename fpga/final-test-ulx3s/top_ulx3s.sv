@@ -16,12 +16,26 @@ module top_ulx3s (
 	inout wire gpio0,
 	inout wire gpio1,
 
+    output wire spi0_clk,
+    output wire spi0_mosi,
+    input wire spi0_miso,
+
+    output wire oled_rstn,
+    output wire oled_dc,
+    output wire oled_csn,
+
 	output wire [7:0] led,
 	input wire [5:0] btn,
 
 	input wire i_clk25,
 	input wire i_rst_n
 );
+
+wire [7:0] test_out;
+
+assign oled_rstn = test_out[0];
+assign oled_dc = test_out[1];
+assign oled_csn = test_out[2];
 
 wire i2c_scl_i = i2c_scl;
 wire i2c_scl_o;
