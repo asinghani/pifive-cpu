@@ -1,3 +1,6 @@
 [submodule "software/tests/riscv-tests/riscv-tests"]
 	path = software/tests/riscv-tests/riscv-tests
 	url = https://github.com/riscv/riscv-tests
+[submodule "soc-final/third_party/verilog-i2c"]
+	path = soc-final/third_party/verilog-i2c
+	url = https://github.com/alexforencich/verilog-i2c
