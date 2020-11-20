@@ -32,6 +32,7 @@ build/top_generic.v:
 # Generate PLL
 .PHONY: build/pll.v
 build/pll.v:
+	mkdir -p build
 	ecppll -i 25 -o $(CLK_FREQ) -f build/pll.v
 
 # Run sv2v conversion

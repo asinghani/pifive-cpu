@@ -10,6 +10,7 @@ from soc import *
 from util import *
 from wishbone_debug_bus import *
 from wishbone_uart import *
+from wishbone_i2c import *
 from cpu import *
 
 # TODO temp - remove
@@ -28,6 +29,7 @@ wb_address_map = {
     "periphs":    (0x8000_0000, 0x8800_0000, "byte", None),
     "user_ident": (0x8000_0000, 0x8000_0100, "byte", None),
     "uart":       (0x8000_0100, 0x8000_0200, "byte", None),
+    "i2c":        (0x8000_0200, 0x8000_0300, "byte", None),
 
     "csrs":       (0x8800_0000, 0x8900_0000, "byte", None),
 }
@@ -53,6 +55,15 @@ io_map = [
     ("uart2", 0,
         Subsignal("tx", Pins(1)),
         Subsignal("rx", Pins(1)),
+    ),
+
+    ("i2c", 0,
+        Subsignal("scl_i", Pins(1)),
+        Subsignal("scl_o", Pins(1)),
+        Subsignal("scl_oen", Pins(1)),
+        Subsignal("sda_i", Pins(1)),
+        Subsignal("sda_o", Pins(1)),
+        Subsignal("sda_oen", Pins(1)),
     ),
 
     ("led", 0, Pins(8)),
@@ -85,6 +96,8 @@ class PiFive(SoC):
         tmp_clk = int(25e6)
 
         self.add_periph(WishboneUART(platform.request("uart1"), fifo_depth=4), "uart")
+
+        self.add_periph(WishboneI2C(platform.request("i2c")), "i2c")
 
         self.add_controller(WishboneDebugBus(platform.request("uart0"), tmp_clk, baud=115200), "debugbus")
 
