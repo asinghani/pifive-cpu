@@ -65,8 +65,6 @@ class WishboneROM(Module):
         # Pack words
         data = [pack_list(x, endianness=endianness) for x in data]
 
-        print(data)
-
         self.sync += [
             self.bus.ack.eq(self.bus.cyc & self.bus.stb & ~self.bus.ack),
             self.bus.dat_r.eq(Array(data)[self.bus.adr >> 2])

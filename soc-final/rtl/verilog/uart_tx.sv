@@ -1,13 +1,12 @@
 `default_nettype none
+
 // UART Transmitter (8/N/1)
-module uart_tx
-#(
-    parameter CLK_FREQ = 250000,
-    parameter BAUD = 9600
-)
-(
+module uart_tx (
     output wire o_ready,
     output reg o_out,
+
+    // Clock divider - should be equal to 0.5 * clock frequency / baud rate
+    input wire [15:0] i_divider,
 
     input wire [7:0] i_data,
     input wire i_valid,
@@ -15,10 +14,7 @@ module uart_tx
     input wire i_rst
 ); 
 
-localparam _CLKS_PER_BIT = CLK_FREQ / BAUD;
-localparam [$clog2(_CLKS_PER_BIT * 2):0] CLKS_PER_BIT = _CLKS_PER_BIT[$clog2(_CLKS_PER_BIT * 2):0];
-
-reg [($clog2(_CLKS_PER_BIT) + 1):0] counter;
+reg [16:0] counter;
 reg [3:0] state = 0; // 0 = idle, 1 = start bit, 2-9 = data bits, 10 = end bit
 
 reg [7:0] data_send; // Buffer the data in case it changes while sending
@@ -41,7 +37,7 @@ always_ff @(posedge i_clk) begin
                 data_send <= i_data;
 
                 /* verilator lint_off WIDTH */
-                counter <= CLKS_PER_BIT;
+                counter <= 2 * i_divider;
                 /* verilator lint_on WIDTH */
             end
 
@@ -60,10 +56,10 @@ always_ff @(posedge i_clk) begin
                 state <= state + 1;
                 /* verilator lint_off WIDTH */
                 if (state == 10) begin
-                    counter <= CLKS_PER_BIT - 1;
+                    counter <= (2 * i_divider) - 1;
                 end
                 else begin
-                    counter <= CLKS_PER_BIT;
+                    counter <= 2 * i_divider;
                 end
                 /* verilator lint_on WIDTH */
             end

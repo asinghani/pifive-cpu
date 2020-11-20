@@ -1,27 +1,28 @@
 `default_nettype none
 
-// UART accessible over wishbone
-// All registers are 8 bits wide to accomodate use with 6502
-// (spaced out at 32-bit intervals for convenience)
+// Wishbone-accessible UART module
+// Registers can be spaced out at word-intervals
+// Unaligned access is not supported
 module wbuart #(
-    parameter UART_BAUD = 115200,
-    parameter CLK_FREQ = 25000000,
     parameter FIFO_DEPTH = 8,
     
-    parameter ADDR_STATUS = 4'h0, // {4'b0, tx_fifo_full, tx_fifo_empty, rx_fifo_full, rx_fifo_empty}
-    parameter ADDR_WRITE  = 4'h4, // tx write
-    parameter ADDR_READ   = 4'h8, // rx read
+    parameter ADDR_STATUS = 4'h0, // {28'b0, tx_fifo_full, tx_fifo_empty, rx_fifo_full, rx_fifo_empty}
+    parameter ADDR_CONFIG = 4'h4, // {16'bX, divider}
+    parameter ADDR_WRITE  = 4'h8, // tx write
+    parameter ADDR_READ   = 4'hC, // rx read
 
-    parameter USE_SYNC = 1 // Whether to syncronize the rx input with 2 FFs
+    parameter DEFAULT_DIVIDER = 217, // 115200 @ 50Mhz 
+
+    parameter USE_SYNC = 1 // Whether to synchronize the rx input with 2 FFs
 ) (
     input wire i_wb_cyc,
     input wire i_wb_stb,
     input wire i_wb_we,
     input wire [3:0] i_wb_addr,
-    input wire [7:0] i_wb_data,
+    input wire [31:0] i_wb_data,
     output reg o_wb_ack = 0,
     output reg o_wb_err = 0,
-    output reg [7:0] o_wb_data,
+    output reg [31:0] o_wb_data,
 
     output wire o_tx,
     input wire i_rx,
@@ -30,24 +31,24 @@ module wbuart #(
     input wire i_rst
 );
 
+reg [15:0] divider;
+
 wire uart_tx_ready;
 wire [7:0] uart_tx_data;
 wire uart_tx_valid;
-uart_tx #(
-    .CLK_FREQ(CLK_FREQ),
-    .BAUD(UART_BAUD)
-) tx_ctrl (
+uart_tx tx_ctrl (
     .o_ready(uart_tx_ready),
     .o_out(o_tx),
     .i_data(uart_tx_data[7:0]),
     .i_valid(uart_tx_valid),
+    .i_divider(divider),
     .i_clk(i_clk),
     .i_rst(i_rst)
 );
 
 wire uart_tx_fifo_empty;
 wire uart_tx_fifo_full;
-wire uart_tx_write_en = (i_wb_addr == ADDR_WRITE) && (~uart_tx_fifo_full) && (i_wb_cyc && i_wb_stb && i_wb_we);
+wire uart_tx_write_en = (i_wb_addr == ADDR_WRITE) && (~uart_tx_fifo_full) && (i_wb_cyc && i_wb_stb && i_wb_we && ~o_wb_ack && ~o_wb_err);
 uart_fifo #(
     .WIDTH(8),
     .DEPTH(FIFO_DEPTH)
@@ -78,20 +79,18 @@ sync_2ff #(
 
 wire [7:0] uart_rx_data;
 wire uart_rx_valid;
-uart_rx #(
-    .CLK_FREQ(CLK_FREQ),
-    .BAUD(UART_BAUD)
-) rx_ctrl (
+uart_rx rx_ctrl (
     .o_data(uart_rx_data),
     .o_valid(uart_rx_valid),
     .i_in(USE_SYNC ? rx : i_rx),
+    .i_divider(divider),
     .i_clk(i_clk),
     .i_rst(i_rst)
 );
 
 wire uart_rx_fifo_empty;
 wire uart_rx_fifo_full;
-wire uart_rx_read_en = (i_wb_addr == ADDR_READ) && (~uart_rx_fifo_empty) && (i_wb_cyc && i_wb_stb);
+wire uart_rx_read_en = (i_wb_addr == ADDR_READ) && (~uart_rx_fifo_empty) && (i_wb_cyc && i_wb_stb && ~o_wb_ack && ~o_wb_err);
 wire [7:0] uart_rx_fifo_data;
 wire uart_rx_fifo_valid;
 uart_fifo #(
@@ -112,14 +111,24 @@ uart_fifo #(
     .i_rst(i_rst)
 );
 
+reg [31:0] last_addr;
+
 always_ff @(posedge i_clk) begin
     o_wb_ack <= 0;
     o_wb_err <= 0;
+    last_addr <= i_wb_addr;
 
-    if (~i_rst) begin
-        if (i_wb_cyc && i_wb_stb) begin
-            if (i_wb_addr == ADDR_READ || i_wb_addr == ADDR_WRITE || i_wb_addr == ADDR_STATUS) begin
+    if (i_rst) begin
+        divider <= DEFAULT_DIVIDER;
+    end
+    else begin
+        if (i_wb_cyc && i_wb_stb && ~o_wb_ack && ~o_wb_err) begin
+            if (i_wb_addr == ADDR_READ || i_wb_addr == ADDR_WRITE || i_wb_addr == ADDR_STATUS || i_wb_addr == ADDR_CONFIG) begin
                 o_wb_ack <= 1;
+
+                if (i_wb_we && i_wb_addr == ADDR_CONFIG) begin
+                    divider <= i_wb_data[15:0];
+                end
             end
             else begin
                 o_wb_err <= 1;
@@ -129,11 +138,21 @@ always_ff @(posedge i_clk) begin
 end
 
 always_comb begin
+    o_wb_data = 0;
+
     if (uart_rx_fifo_valid) begin
-        o_wb_data = uart_rx_fifo_data;
+        o_wb_data = {23'b0, 1'b1, uart_rx_fifo_data};
     end
     else begin
-       o_wb_data = {4'b0, uart_tx_fifo_full, uart_tx_fifo_empty, uart_rx_fifo_full, uart_rx_fifo_empty};
+        if (last_addr == ADDR_CONFIG) begin
+           o_wb_data = {16'b0, divider};
+        end
+        else if (last_addr == ADDR_STATUS) begin
+           o_wb_data = {28'b0, uart_tx_fifo_full, uart_tx_fifo_empty, uart_rx_fifo_full, uart_rx_fifo_empty};
+        end
+        else begin
+            o_wb_data = 0;
+        end
     end
 end
 

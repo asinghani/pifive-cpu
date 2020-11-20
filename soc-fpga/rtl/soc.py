@@ -13,7 +13,6 @@ from util import *
 from wishbone_debug_bus import *
 from wishbone_uart import *
 from cpu import *
-from wbp2wbc import *
 from jtag import *
 
 class SoC(GenericSoC):

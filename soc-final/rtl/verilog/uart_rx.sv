@@ -1,25 +1,19 @@
 `default_nettype none
 
 // UART Reciever (8/N/1)
-module uart_rx
-#(
-    parameter CLK_FREQ = 250000,
-    parameter BAUD = 9600
-) (
+module uart_rx (
     output reg [7:0] o_data,
     output reg o_valid,
 
-    input wire i_in,
+    // Clock divider - should be equal to 0.5 * clock frequency / baud rate
+    input wire [15:0] i_divider,
 
+    input wire i_in,
     input wire i_clk,
     input wire i_rst
 ); 
 
-localparam _CLKS_PER_BIT = CLK_FREQ / BAUD;
-localparam [$clog2(_CLKS_PER_BIT * 2):0] CLKS_PER_BIT = _CLKS_PER_BIT[$clog2(_CLKS_PER_BIT * 2):0];
-localparam [$clog2(_CLKS_PER_BIT * 2):0] CLKS_PER_1_5_BIT = 3 * CLKS_PER_BIT / 2;
-
-reg[$clog2(_CLKS_PER_BIT * 2):0] counter;
+reg [16:0] counter;
 reg [3:0] state = 0; // 0 = idle, 1 = start bit, 2-9 = data bits
 
 always_ff @(posedge i_clk) begin
@@ -36,9 +30,7 @@ always_ff @(posedge i_clk) begin
             // Start bit
             if(i_in == 0) begin
                 state <= 1;
-                /* verilator lint_off WIDTH */
-                counter <= CLKS_PER_1_5_BIT;
-                /* verilator lint_on WIDTH */
+                counter <= 3 * i_divider;
             end
 
             // Else stay in idle
@@ -66,9 +58,7 @@ always_ff @(posedge i_clk) begin
                 state <= state + 1;
                 o_data[state - 1] <= i_in;
 
-                /* verilator lint_off WIDTH */
-                counter <= CLKS_PER_BIT;
-                /* verilator lint_on WIDTH */
+                counter <= 2 * i_divider;
             end
         end
         else begin

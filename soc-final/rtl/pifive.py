@@ -4,6 +4,7 @@ from litex.soc.integration.builder import *
 from litex.soc.interconnect import wishbone as wb
 
 from litex.soc.cores.gpio import GPIOIn, GPIOOut
+from litex.soc.cores.uart import UART, UARTPHY
 
 from soc import *
 from util import *
@@ -17,7 +18,7 @@ from simpleriscv import asm
 csr_address_map = {
     "leds":        0x8800_0000,
     "btns":        0x8800_0400,
-    "cpu_disable": 0x8800_0800,
+    "cpu_disable": 0x8800_0C00,
 }
 
 wb_address_map = {
@@ -26,6 +27,7 @@ wb_address_map = {
 
     "periphs":    (0x8000_0000, 0x8800_0000, "byte", None),
     "user_ident": (0x8000_0000, 0x8000_0100, "byte", None),
+    "uart":       (0x8000_0100, 0x8000_0200, "byte", None),
 
     "csrs":       (0x8800_0000, 0x8900_0000, "byte", None),
 }
@@ -48,6 +50,11 @@ io_map = [
         Subsignal("rx", Pins(1)),
     ),
 
+    ("uart2", 0,
+        Subsignal("tx", Pins(1)),
+        Subsignal("rx", Pins(1)),
+    ),
+
     ("led", 0, Pins(8)),
     ("btn", 0, Pins(6))
 ]
@@ -64,6 +71,7 @@ class PiFive(SoC):
         self.add_csr(GPIOOut(platform.request("led")), "leds")
         self.add_csr(GPIOIn(platform.request("btn")), "btns")
 
+
         self.add_periph(WishboneROM("Test SoC User Space"), "user_ident")
         self.add_mgmt_periph(WishboneROM("Test SoC Mgmt Space"), "mgmt_ident")
 
@@ -76,15 +84,17 @@ class PiFive(SoC):
 
         tmp_clk = int(25e6)
 
+        self.add_periph(WishboneUART(platform.request("uart1"), fifo_depth=4), "uart")
+
         self.add_controller(WishboneDebugBus(platform.request("uart0"), tmp_clk, baud=115200), "debugbus")
 
-        self.submodules.mgmt_ctrl = WishboneDebugBus(platform.request("uart1"), tmp_clk, baud=115200)
+        self.submodules.mgmt_ctrl = WishboneDebugBus(platform.request("uart2"), tmp_clk, baud=115200)
         self.sync += self.mgmt_ctrl.bus.connect(mgmt_bus)
 
-        cpu = CPUWrapper()
+        """cpu = CPUWrapper()
         self.add_controller(cpu, "cpu_ibus", bus=cpu.instr_bus)
         self.add_controller(None, "cpu_dbus", bus=cpu.data_bus)
-        self.add_csr(GPIOOut(cpu.disable), "cpu_disable")
+        self.add_csr(GPIOOut(cpu.disable), "cpu_disable")"""
 
         main_mem_map, mgmt_mem_map = self.generate_bus()
 
@@ -115,19 +125,20 @@ class PiFive(SoC):
 
 def test_program():
     p = asm.Program()
-    CTR_MAX = 1000000
+    CTR_MAX = 2000000
     led_addr = "x1"
     ctr = "x2"
     ctr_max = "x3"
     led_data = "x4"
 
-    p.ADDI(led_data, "x0", 0)
+    p.ADDI(led_data, "x0", 0b1010)
     p.LUI(led_addr, -491520) # 0x8800_0000 >> 12
     p.LUI(ctr_max, CTR_MAX >> 12)
     p.ADDI(ctr_max, ctr_max, CTR_MAX & ((1 << 12) - 1))
 
     p.LABEL("start")
-    p.XORI(led_data, led_data, 0b1)
+    #p.XORI(led_data, led_data, 0b1111)
+    p.LW(led_addr, led_data, 0x400) # switch value
     p.SW(led_addr, led_data, 0)
     p.ADDI(ctr, "x0", 0)
     p.LABEL("ctr")

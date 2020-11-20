@@ -396,18 +396,19 @@ always_ff @(posedge i_clk) begin
         o_wb_cyc <= 0;
         o_wb_stb <= 0;
     end
-    else if (o_wb_stb) begin
+    /*else if (o_wb_stb) begin
         timeout_ctr <= timeout_ctr - 1;
         // If not stalled, output is complete
         if (!i_wb_stall) begin
             o_wb_stb <= 0;
         end
-    end
+    end*/
     else if (o_wb_cyc) begin
         timeout_ctr <= timeout_ctr - 1;
         // Once acknowledged, finish cycle
         if (i_wb_ack) begin
             o_wb_cyc <= 0;
+            o_wb_stb <= 0;
         end
     end
     else begin
@@ -421,15 +422,18 @@ always_ff @(posedge i_clk) begin
     end
 end
 
+reg last_stb;
+
 // Addressing
 always_ff @(posedge i_clk) begin
+    last_stb <= o_wb_stb;
     if (cmd_recv) begin
         if ((cmd_inst == CMD_SET_ADDR) || (cmd_inst == CMD_SET_ADDR_INC)) begin
             o_wb_addr <= cmd_data;
             addr_inc <= (cmd_inst == CMD_SET_ADDR_INC);
         end
     end
-    else if (o_wb_stb && ~i_wb_stall) begin
+    else if (~o_wb_stb && last_stb) begin
         /* verilator lint_off WIDTH */
         o_wb_addr <= o_wb_addr + addr_inc;
         /* verilator lint_on WIDTH */
@@ -447,7 +451,7 @@ end
 // Write Data
 always_ff @(posedge i_clk) begin
     // Update data when not stalled
-    if (~(o_wb_stb && i_wb_stall)) begin
+    if (~o_wb_cyc) begin
         o_wb_data <= cmd_data;
     end
 end

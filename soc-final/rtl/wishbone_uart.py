@@ -2,12 +2,12 @@ from migen import *
 from litex.soc.interconnect import wishbone as wb
 
 class WishboneUART(Module):
-    def __init__(self, uart, clk_freq, baud=115200, fifo_depth=16, bus=None):
-        self.uart_tx = uart.tx
-        self.uart_rx = uart.rx
+    def __init__(self, pads, fifo_depth=4, bus=None):
+        self.uart_tx = pads.tx
+        self.uart_rx = pads.rx
 
         if bus is None:
-            self.bus = wb.Interface()
+            self.bus = wb.Interface(data_width=32, adr_width=32)
         else:
             self.bus = bus
 
@@ -31,11 +31,9 @@ class WishboneUART(Module):
             i_i_clk=ClockSignal(),
             i_i_rst=ResetSignal(),
 
-            p_UART_BAUD=baud,
-            #p_CLK_FREQ=clk_freq,
             p_FIFO_DEPTH=fifo_depth,
-
-            p_ADDR_STATUS=0,
-            p_ADDR_WRITE=addr_spacing,
-            p_ADDR_READ=2 * addr_spacing
+            p_ADDR_STATUS=0 * addr_spacing,
+            p_ADDR_CONFIG=1 * addr_spacing,
+            p_ADDR_WRITE= 2 * addr_spacing,
+            p_ADDR_READ=  3 * addr_spacing
         )
