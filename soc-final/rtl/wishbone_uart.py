@@ -12,7 +12,6 @@ class WishboneUART(Module):
             self.bus = bus
 
         addr_spacing = self.bus.dat_r.nbits // 8
-        print(addr_spacing)
 
         self.specials += Instance("wbuart",
             o_o_tx=self.uart_tx,

@@ -13,6 +13,9 @@ module top_ulx3s (
 	inout wire i2c_sda,
 	inout wire i2c_scl,
 
+	inout wire gpio0,
+	inout wire gpio1,
+
 	output wire [7:0] led,
 	input wire [5:0] btn,
 

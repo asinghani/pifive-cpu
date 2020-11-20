@@ -4,13 +4,13 @@ from litex.soc.integration.builder import *
 from litex.soc.interconnect import wishbone as wb
 
 from litex.soc.cores.gpio import GPIOIn, GPIOOut
-from litex.soc.cores.uart import UART, UARTPHY
 
 from soc import *
 from util import *
 from wishbone_debug_bus import *
 from wishbone_uart import *
 from wishbone_i2c import *
+from wishbone_pwm import *
 from cpu import *
 
 # TODO temp - remove
@@ -19,7 +19,7 @@ from simpleriscv import asm
 csr_address_map = {
     "leds":        0x8800_0000,
     "btns":        0x8800_0400,
-    "cpu_disable": 0x8800_0C00,
+    "cpu_disable": 0x8810_0000,
 }
 
 wb_address_map = {
@@ -30,6 +30,9 @@ wb_address_map = {
     "user_ident": (0x8000_0000, 0x8000_0100, "byte", None),
     "uart":       (0x8000_0100, 0x8000_0200, "byte", None),
     "i2c":        (0x8000_0200, 0x8000_0300, "byte", None),
+
+    "pwm0":       (0x8000_1000, 0x8000_1010, "byte", None),
+    "pwm1":       (0x8000_1010, 0x8000_1020, "byte", None),
 
     "csrs":       (0x8800_0000, 0x8900_0000, "byte", None),
 }
@@ -67,7 +70,10 @@ io_map = [
     ),
 
     ("led", 0, Pins(8)),
-    ("btn", 0, Pins(6))
+    ("btn", 0, Pins(6)),
+
+    ("gpio0", 0, Pins(1)),
+    ("gpio1", 0, Pins(1)),
 ]
 
 class PiFive(SoC):
@@ -82,6 +88,8 @@ class PiFive(SoC):
         self.add_csr(GPIOOut(platform.request("led")), "leds")
         self.add_csr(GPIOIn(platform.request("btn")), "btns")
 
+        self.add_periph(WishbonePWM(platform.request("gpio0")), "pwm0")
+        self.add_periph(WishbonePWM(platform.request("gpio1")), "pwm1")
 
         self.add_periph(WishboneROM("Test SoC User Space"), "user_ident")
         self.add_mgmt_periph(WishboneROM("Test SoC Mgmt Space"), "mgmt_ident")
