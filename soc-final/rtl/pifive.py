@@ -12,6 +12,7 @@ from wishbone_debug_bus import *
 from wishbone_uart import *
 from wishbone_i2c import *
 from wishbone_pwm import *
+from wishbone_spi import *
 from cpu import *
 from timer import *
 
@@ -24,7 +25,7 @@ csr_address_map = {
     "leds":        0x8800_0000,
     "btns":        0x8800_0400,
     "test_out":    0x8800_0800,
-    "spi0":        0x8800_0C00,
+    #"spi0":        0x8800_0C00,
     "cpu_disable": 0x8810_0000,
 }
 
@@ -43,6 +44,8 @@ wb_address_map = {
     "timer0":     (0x8000_2000, 0x8000_2020, "byte", None),
     "timer1":     (0x8000_2020, 0x8000_2040, "byte", None),
     "uptime":     (0x8000_2040, 0x8000_2060, "byte", None),
+
+    "spi0":       (0x8000_3000, 0x8000_3020, "byte", None),
 
     "csrs":       (0x8800_0000, 0x8900_0000, "byte", None),
 }
@@ -103,7 +106,8 @@ class PiFive(SoC):
             wishbone_delay_register=False
         )
 
-        self.add_csr(GPIOOut(platform.request("led")), "leds")
+        #self.add_csr(GPIOOut(platform.request("led")), "leds")
+        self.add_csr(GPIOOut(Signal(8)), "leds")
         self.add_csr(GPIOIn(platform.request("btn")), "btns")
 
         self.add_csr(GPIOOut(platform.request("test_out")), "test_out")
@@ -114,8 +118,10 @@ class PiFive(SoC):
         self.add_periph(WishboneROM("Test SoC User Space"), "user_ident")
         self.add_mgmt_periph(WishboneROM("Test SoC Mgmt Space"), "mgmt_ident")
 
-        self.add_csr(SPIMaster(platform.request("spi0"), data_width=8, sys_clk_freq=50000000, spi_clk_freq=1000000, mode="raw"), "spi0")
-        self.spi0.add_clk_divider()
+        self.add_periph(WishboneSPI(platform.request("spi0")), "spi0")
+        self.comb += platform.request("led").eq(self.spi0.led)
+        #self.add_csr(SPIMaster(platform.request("spi0"), data_width=8, sys_clk_freq=50000000, spi_clk_freq=1000000, mode="raw"), "spi0")
+        #self.spi0.add_clk_divider()
 
         self.add_mem(WishboneROM(test_program(), nullterm=False, endianness="little"), "iram")
 
@@ -168,7 +174,6 @@ class PiFive(SoC):
     @classmethod
     def get_io(cls):
         return io_map
-
 
 def test_program():
     p = asm.Program()
