@@ -1,5 +1,5 @@
 PYTHON_SOURCES=$(shell find ./rtl -name "*.py")
-THIRD_PARTY_SOURCES=./third_party/verilog-i2c/rtl/i2c_master.v ./third_party/verilog-i2c/rtl/axis_fifo.v ./third_party/verilog-i2c/rtl/i2c_master_wbs_16.v ./third_party/spi-controller/spi_controller.v
+THIRD_PARTY_SOURCES=./third_party/verilog-i2c/rtl/i2c_master.v ./third_party/verilog-i2c/rtl/axis_fifo.v ./third_party/verilog-i2c/rtl/i2c_master_wbs_16.v ./third_party/spi-controller/spi_controller.v ./third_party/hyperram/hyper_xface.v
 VERILOG_SOURCES=$(shell find ./rtl/verilog -name "*.v") $(shell find ./rtl/verilog -name "*.sv") $(THIRD_PARTY_SOURCES)
 
 build/top.v: build/litex_top.v build/cpu_top.v $(VERILOG_SOURCES)

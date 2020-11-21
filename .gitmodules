@@ -4,3 +4,6 @@
 [submodule "soc-final/third_party/verilog-i2c"]
 	path = soc-final/third_party/verilog-i2c
 	url = https://github.com/alexforencich/verilog-i2c
+[submodule "soc-final/third_party/hyperram"]
+	path = soc-final/third_party/hyperram
+	url = https://github.com/blackmesalabs/hyperram

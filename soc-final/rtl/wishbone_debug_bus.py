@@ -12,6 +12,16 @@ class WishboneDebugBus(Module):
 
         self.bus = wb.Interface(data_width=32, adr_width=32)
 
+        self.ctr = Signal(16)
+
+        last_stb = Signal()
+        self.sync += [
+            last_stb.eq(self.bus.stb),
+            If(self.bus.cyc & self.bus.stb,
+               If(~last_stb, self.ctr.eq(0)).
+               Else(self.ctr.eq(self.ctr + 1)))
+        ]
+
         self.sync += [
             self.bus.sel.eq(Constant(0b1111)),
             self.bus.cti.eq(Constant(0b000)),

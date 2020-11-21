@@ -4,7 +4,7 @@ from litex.soc.integration.builder import *
 from litex.soc.interconnect import wishbone as wb
 
 from litex.soc.cores.gpio import GPIOIn, GPIOOut
-from litex.soc.cores.spi import SPIMaster
+from spi_flash import *
 
 from soc import *
 from util import *
@@ -13,11 +13,20 @@ from wishbone_uart import *
 from wishbone_i2c import *
 from wishbone_pwm import *
 from wishbone_spi import *
+from wishbone_bridge import *
+from inst_buffer import *
 from cpu import *
 from timer import *
 
+from litespi.modules import IS25LP032
+from litespi.opcodes import SpiNorFlashOpCodes as Codes
+from litespi.phy.generic import LiteSPIPHY
+from litespi import LiteSPI
+
 # TODO temp - remove
 from simpleriscv import asm
+
+from ram_subsystem import RAMSubsystem
 
 from litex.soc.interconnect.csr import *
 
@@ -27,11 +36,21 @@ csr_address_map = {
     "test_out":    0x8800_0800,
     #"spi0":        0x8800_0C00,
     "cpu_disable": 0x8810_0000,
+
+    "spiflash_mmap": 0x8888_0000,
+    "spiflash_csr": 0x8888_1000,
+    "spiflash": 0x8888_2000,
 }
 
 wb_address_map = {
     "iram":       (0x1000_0000, 0x2000_0000, "byte", None),
     "dram":       (0x4000_0000, 0x5000_0000, "word", None),
+
+    "hyperram0":  (0xA000_0000, 0xB000_0000, "byte", None),
+    "hyperram1":  (0xC000_0000, 0xD000_0000, "byte", None),
+
+    "ibuffer":    (0x5000_0000, 0x5000_1000, "byte", None),
+    "spiflash":   (0x6000_0000, 0x6100_0000, "byte", None),
 
     "periphs":    (0x8000_0000, 0x8800_0000, "byte", None),
     "user_ident": (0x8000_0000, 0x8000_0100, "byte", None),
@@ -51,7 +70,9 @@ wb_address_map = {
 }
 
 mgmt_address_map = {
-    "mgmt_ident": (0x3000_0000, 0x3000_0100, "byte", None),
+    "mgmt_ident":    (0x3000_0000, 0x3000_0100, "byte", None),
+    "ibuffer_mgmt":  (0x4000_0000, 0x4000_1000, "byte", None),
+    "wb_bridge_dbg": (0x4000_1000, 0x4000_2000, "byte", None),
 }
 
 io_map = [
@@ -88,6 +109,12 @@ io_map = [
         Subsignal("clk", Pins(1)),
     ),
 
+    ("flash", 0,
+        Subsignal("dq", Pins(4)),
+        Subsignal("cs_n", Pins(1)),
+        Subsignal("clk", Pins(1)),
+    ),
+
     ("led", 0, Pins(8)),
     ("btn", 0, Pins(6)),
 
@@ -95,6 +122,20 @@ io_map = [
     ("gpio1", 0, Pins(1)),
 
     ("test_out", 0, Pins(8)),
+
+    ("hyperram", 0,
+        Subsignal("dq_i", Pins(8)),
+        Subsignal("dq_o", Pins(8)),
+        Subsignal("dq_oe", Pins(1)),
+
+        Subsignal("rwds_i", Pins(1)),
+        Subsignal("rwds_o", Pins(1)),
+        Subsignal("rwds_oe", Pins(1)),
+
+        Subsignal("ck", Pins(1)),
+        Subsignal("rst_n", Pins(1)),
+        Subsignal("cs_n", Pins(1)),
+    ),
 ]
 
 class PiFive(SoC):
@@ -106,22 +147,54 @@ class PiFive(SoC):
             wishbone_delay_register=False
         )
 
+        tmp_clk = int(25e6)
+
+        """flash = IS25LP032(Codes.READ_1_1_1)
+        self.submodules.spiflash_phy = LiteSPIPHY(
+            pads    = platform.request("flash"),
+            flash   = flash,
+            device  = "generic")
+
+    #    self.add_csr(spiflash_phy, "spiflash_phy")
+
+        self.submodules.spiflash_mmap = LiteSPI(
+            phy             = self.spiflash_phy,
+            clk_freq        = tmp_clk,
+            mmap_endianness = "little")
+
+    #    self.add_csr(spiflash_mmap, "spiflash_mmap")
+        self.add_mem(None, "spiflash", bus=self.spiflash_mmap.bus)"""
+        spi_pads = platform.request("flash")
+        """pads = lambda:None
+        pads.hold = spi_pads.dq[3]
+        pads.wp = spi_pads.dq[2]
+        pads.miso = spi_pads.dq[1]
+        pads.mosi = spi_pads.dq[0]
+        pads.clk = spi_pads.clk
+        pads.cs_n = spi_pads.cs_n"""
+        #self.add_mem(SpiFlashQuadReadWrite(spi_pads, dummy=16, div=2, with_bitbang=False, endianness="little"), "spiflash")
+        self.submodules.ram = RAMSubsystem(platform.request("hyperram"))
+        self.add_mem(None, "hyperram0", bus=self.ram.bus_cached)
+        self.add_mem(None, "hyperram1", bus=self.ram.bus_uncached)
+
         #self.add_csr(GPIOOut(platform.request("led")), "leds")
-        self.add_csr(GPIOOut(Signal(8)), "leds")
         self.add_csr(GPIOIn(platform.request("btn")), "btns")
 
         self.add_csr(GPIOOut(platform.request("test_out")), "test_out")
 
-        self.add_periph(WishbonePWM(platform.request("gpio0")), "pwm0")
-        self.add_periph(WishbonePWM(platform.request("gpio1")), "pwm1")
+        self.add_controller(WishboneBridge(), "wb_bridge")
+        self.add_mgmt_periph(None, "wb_bridge_dbg", bus=self.wb_bridge.debug_bus)
+
+        #self.add_periph(WishbonePWM(platform.request("gpio0")), "pwm0")
+        #self.add_periph(WishbonePWM(platform.request("gpio1")), "pwm1")
 
         self.add_periph(WishboneROM("Test SoC User Space"), "user_ident")
         self.add_mgmt_periph(WishboneROM("Test SoC Mgmt Space"), "mgmt_ident")
 
         self.add_periph(WishboneSPI(platform.request("spi0")), "spi0")
-        self.comb += platform.request("led").eq(self.spi0.led)
-        #self.add_csr(SPIMaster(platform.request("spi0"), data_width=8, sys_clk_freq=50000000, spi_clk_freq=1000000, mode="raw"), "spi0")
-        #self.spi0.add_clk_divider()
+
+        self.add_mem(InstBuffer(size=32), "ibuffer")
+        self.add_mgmt_periph(None, "ibuffer_mgmt", bus=self.ibuffer.debug_bus)
 
         self.add_mem(WishboneROM(test_program(), nullterm=False, endianness="little"), "iram")
 
@@ -129,11 +202,10 @@ class PiFive(SoC):
 
         self.add_mem(wb.SRAM(512, init=[0xDEADBEEF], bus=wb.Interface(data_width=32, adr_width=32)), "dram")
 
-        tmp_clk = int(25e6)
 
-        self.add_periph(WishboneUART(platform.request("uart1"), fifo_depth=4), "uart")
+        #self.add_periph(WishboneUART(platform.request("uart2"), fifo_depth=4), "uart")
 
-        self.add_periph(WishboneI2C(platform.request("i2c")), "i2c")
+        #self.add_periph(WishboneI2C(platform.request("i2c")), "i2c")
 
         self.add_periph(UptimeTimer(), "uptime")
         self.add_periph(Timer(), "timer0")
@@ -141,7 +213,9 @@ class PiFive(SoC):
 
         self.add_controller(WishboneDebugBus(platform.request("uart0"), tmp_clk, baud=115200), "debugbus")
 
-        self.submodules.mgmt_ctrl = WishboneDebugBus(platform.request("uart2"), tmp_clk, baud=115200)
+        self.comb += platform.request("led").eq(Mux(self.debugbus.ctr[0:9] == self.debugbus.ctr, self.debugbus.ctr >> 1, Constant(255)))
+
+        self.submodules.mgmt_ctrl = WishboneDebugBus(platform.request("uart1"), tmp_clk, baud=115200)
         self.sync += self.mgmt_ctrl.bus.connect(mgmt_bus)
 
         """cpu = CPUWrapper()
@@ -176,6 +250,18 @@ class PiFive(SoC):
         return io_map
 
 def test_program():
+    p = asm.Program()
+    led_addr = "x1"
+    led_data = "x2"
+
+    p.LUI("x1", -262144) # 0xC000_0000 >> 12
+    p.LABEL("start")
+    p.LW("x0", "x1", 0)
+    p.JAL("x0", "start")
+
+    return p.machine_code
+
+def test_program2():
     p = asm.Program()
     CTR_MAX = 2000000
     led_addr = "x1"

@@ -45,6 +45,8 @@ always_comb begin
     o_out.rs1_addr = (opcode == `OPCODE_LUI) ? 0 : i_instr[19:15];
     o_out.rs2_addr = i_instr[24:20];
 
+    $display("%x RS1 %d RS2 %d %d\n", i_instr, o_out.rs1_addr, o_out.rs2_addr, o_out.loadstore);
+
     o_out.pc = i_pc;
 
     // Default to something simple which won't stall

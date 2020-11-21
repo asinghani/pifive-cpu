@@ -8,8 +8,6 @@ class WishboneSPI(Module):
         else:
             self.bus = bus
 
-        self.led = Signal(8)
-
         self.irq = Signal()
 
         wb_req = self.bus.cyc & self.bus.stb & ~self.bus.ack
@@ -30,9 +28,6 @@ class WishboneSPI(Module):
         # Address 0 = Config / Status = {13'b0, ready[0:0], mode[1:0], divider[15:0]}
         # Address 4 = Data Write (lowest 8 bits)
         # Address 8 = Data Read (lowest 8 bits)
-
-        self.comb += self.led.eq(Cat(ready, mode, start_write, data_out_valid, self.bus.ack, wb_req, self.irq))
-
         self.sync += [
             self.bus.ack.eq(0),
             self.bus.err.eq(0),
