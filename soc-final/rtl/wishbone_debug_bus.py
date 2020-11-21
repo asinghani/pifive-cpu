@@ -4,8 +4,8 @@ from litex.soc.interconnect import wishbone as wb
 class WishboneDebugBus(Module):
     def __init__(self, uart, clk_freq, baud=115200, drop_clks=None, fifo_depth=16):
         if drop_clks is None:
-            # Default to 0.1s timeout
-            drop_clks = clk_freq // 10
+            # Default to 1s timeout
+            drop_clks = clk_freq // 1
 
         self.uart_tx = uart.tx
         self.uart_rx = uart.rx

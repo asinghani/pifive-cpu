@@ -14,6 +14,7 @@ from wishbone_i2c import *
 from wishbone_pwm import *
 from wishbone_spi import *
 from wishbone_bridge import *
+from debug_mem import *
 from inst_buffer import *
 from cpu import *
 from timer import *
@@ -67,12 +68,15 @@ wb_address_map = {
     "spi0":       (0x8000_3000, 0x8000_3020, "byte", None),
 
     "csrs":       (0x8800_0000, 0x8900_0000, "byte", None),
+
+    "dbgmem":     (0xD000_0000, 0xE000_0000, "byte", None),
 }
 
 mgmt_address_map = {
     "mgmt_ident":    (0x3000_0000, 0x3000_0100, "byte", None),
     "ibuffer_mgmt":  (0x4000_0000, 0x4000_1000, "byte", None),
     "wb_bridge_dbg": (0x4000_1000, 0x4000_2000, "byte", None),
+    "dbgmem_mgmt":   (0x4000_8000, 0x4000_9000, "byte", None),
 }
 
 io_map = [
@@ -184,6 +188,9 @@ class PiFive(SoC):
 
         self.add_controller(WishboneBridge(), "wb_bridge")
         self.add_mgmt_periph(None, "wb_bridge_dbg", bus=self.wb_bridge.debug_bus)
+
+        self.add_mem(DebugMemory(), "dbgmem")
+        self.add_mgmt_periph(None, "dbgmem_mgmt", bus=self.dbgmem.debug_bus)
 
         #self.add_periph(WishbonePWM(platform.request("gpio0")), "pwm0")
         #self.add_periph(WishbonePWM(platform.request("gpio1")), "pwm1")
