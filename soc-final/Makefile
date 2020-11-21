@@ -29,3 +29,7 @@ build/cpu_top_verif.v:
 	mkdir -p build
 	make -C ../cpu build/top_verif.v
 	cp ../cpu/build/top_verif.v build/cpu_top_verif.v
+
+.PHONY: est-util
+est-util: build/top.v
+	yosys -p 'read_verilog -sv build/top.v; synth -top soc; stat'

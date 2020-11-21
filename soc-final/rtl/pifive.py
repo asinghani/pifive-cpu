@@ -177,14 +177,19 @@ class PiFive(SoC):
         pads.clk = spi_pads.clk
         pads.cs_n = spi_pads.cs_n"""
         #self.add_mem(SpiFlashQuadReadWrite(spi_pads, dummy=16, div=2, with_bitbang=False, endianness="little"), "spiflash")
-        self.submodules.ram = RAMSubsystem(platform.request("hyperram"))
-        self.add_mem(None, "hyperram0", bus=self.ram.bus_cached)
-        self.add_mem(None, "hyperram1", bus=self.ram.bus_uncached)
+
+
+        # TODO ADD BACK
+        #self.submodules.ram = RAMSubsystem(platform.request("hyperram"))
+        #self.add_mem(None, "hyperram0", bus=self.ram.bus_cached)
+        #self.add_mem(None, "hyperram1", bus=self.ram.bus_uncached)
 
         #self.add_csr(GPIOOut(platform.request("led")), "leds")
-        self.add_csr(GPIOIn(platform.request("btn")), "btns")
 
-        self.add_csr(GPIOOut(platform.request("test_out")), "test_out")
+
+        ##### TODO ADD BACK
+        #self.add_csr(GPIOIn(platform.request("btn")), "btns")
+        #self.add_csr(GPIOOut(platform.request("test_out")), "test_out")
 
         self.add_controller(WishboneBridge(), "wb_bridge")
         self.add_mgmt_periph(None, "wb_bridge_dbg", bus=self.wb_bridge.debug_bus)
@@ -192,43 +197,44 @@ class PiFive(SoC):
         self.add_mem(DebugMemory(), "dbgmem")
         self.add_mgmt_periph(None, "dbgmem_mgmt", bus=self.dbgmem.debug_bus)
 
-        #self.add_periph(WishbonePWM(platform.request("gpio0")), "pwm0")
-        #self.add_periph(WishbonePWM(platform.request("gpio1")), "pwm1")
+        self.add_periph(WishbonePWM(platform.request("gpio0")), "pwm0")
+        self.add_periph(WishbonePWM(platform.request("gpio1")), "pwm1")
 
         self.add_periph(WishboneROM("Test SoC User Space"), "user_ident")
         self.add_mgmt_periph(WishboneROM("Test SoC Mgmt Space"), "mgmt_ident")
 
         self.add_periph(WishboneSPI(platform.request("spi0")), "spi0")
 
-        self.add_mem(InstBuffer(size=32), "ibuffer")
+        self.add_mem(InstBuffer(size=8), "ibuffer")
         self.add_mgmt_periph(None, "ibuffer_mgmt", bus=self.ibuffer.debug_bus)
 
         self.add_mem(WishboneROM(test_program(), nullterm=False, endianness="little"), "iram")
 
         #self.add_mem(wb.SRAM(512, init=[0x00000113, 0x40000237, 0x00020213, 0x800001B7, 0x00018193, 0xFFF14113, 0x0021A023, 0x009890B7, 0x68008093, 0xFFF08093, 0x00122023, 0xFE104CE3, 0xFE5FF06F, 0x80000137, 0x00010113, 0x00212023], bus=wb.Interface(data_width=32, adr_width=32)), "iram")
 
-        self.add_mem(wb.SRAM(512, init=[0xDEADBEEF], bus=wb.Interface(data_width=32, adr_width=32)), "dram")
+        #self.add_mem(wb.SRAM(512, init=[0xDEADBEEF], bus=wb.Interface(data_width=32, adr_width=32)), "dram")
 
 
-        #self.add_periph(WishboneUART(platform.request("uart2"), fifo_depth=4), "uart")
+        self.add_periph(WishboneUART(platform.request("uart2"), fifo_depth=4), "uart")
 
-        #self.add_periph(WishboneI2C(platform.request("i2c")), "i2c")
+        self.add_periph(WishboneI2C(platform.request("i2c")), "i2c")
 
         self.add_periph(UptimeTimer(), "uptime")
         self.add_periph(Timer(), "timer0")
         self.add_periph(Timer(), "timer1")
 
-        self.add_controller(WishboneDebugBus(platform.request("uart0"), tmp_clk, baud=115200), "debugbus")
-
-        self.comb += platform.request("led").eq(Mux(self.debugbus.ctr[0:9] == self.debugbus.ctr, self.debugbus.ctr >> 1, Constant(255)))
+        #self.add_controller(WishboneDebugBus(platform.request("uart0"), tmp_clk, baud=115200), "debugbus")
+        #self.comb += platform.request("led").eq(Mux(self.debugbus.ctr[0:9] == self.debugbus.ctr, self.debugbus.ctr >> 1, Constant(255)))
 
         self.submodules.mgmt_ctrl = WishboneDebugBus(platform.request("uart1"), tmp_clk, baud=115200)
         self.sync += self.mgmt_ctrl.bus.connect(mgmt_bus)
 
-        """cpu = CPUWrapper()
+        cpu = CPUWrapper()
         self.add_controller(cpu, "cpu_ibus", bus=cpu.instr_bus)
         self.add_controller(None, "cpu_dbus", bus=cpu.data_bus)
-        self.add_csr(GPIOOut(cpu.disable), "cpu_disable")"""
+
+        #### TODO ADD BACK
+        #self.add_csr(GPIOOut(cpu.disable), "cpu_disable")
 
         main_mem_map, mgmt_mem_map = self.generate_bus()
 
