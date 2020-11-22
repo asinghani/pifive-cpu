@@ -14,6 +14,7 @@ from wishbone_i2c import *
 from wishbone_pwm import *
 from wishbone_spi import *
 from wishbone_bridge import *
+from wishbone_external import *
 from debug_mem import *
 from inst_buffer import *
 from cpu import *
@@ -43,6 +44,14 @@ csr_address_map = {
     "spiflash": 0x8888_2000,
 }
 
+# Assuming byte-level addressing:
+# 0xXXXX_XXXX = 4096 MiB
+# 0x0XXX_XXXX =  256 MiB
+# 0x00XX_XXXX =   16 MiB
+# 0x000X_XXXX =    1 MiB
+# 0x0000_XXXX =   64 KiB
+# 0x0000_0XXX =    4 KiB
+
 wb_address_map = {
     "iram":       (0x1000_0000, 0x2000_0000, "byte", None),
     "dram":       (0x4000_0000, 0x5000_0000, "word", None),
@@ -52,6 +61,9 @@ wb_address_map = {
 
     "ibuffer":    (0x5000_0000, 0x5000_1000, "byte", None),
     "spiflash":   (0x6000_0000, 0x6100_0000, "byte", None),
+
+    "scratch0":   (0x6100_0000, 0x6200_0000, "word", None),
+    "scratch1":   (0x6200_0000, 0x6300_0000, "word", None),
 
     "periphs":    (0x8000_0000, 0x8800_0000, "byte", None),
     "user_ident": (0x8000_0000, 0x8000_0100, "byte", None),
@@ -140,6 +152,30 @@ io_map = [
         Subsignal("rst_n", Pins(1)),
         Subsignal("cs_n", Pins(1)),
     ),
+
+    ("scratch0", 0,
+        Subsignal("cyc", Pins(1)),
+        Subsignal("stb", Pins(1)),
+        Subsignal("addr", Pins(32)),
+        Subsignal("data_wr", Pins(32)),
+        Subsignal("data_rd", Pins(32)),
+        Subsignal("sel", Pins(4)),
+        Subsignal("we", Pins(1)),
+        Subsignal("ack", Pins(1)),
+        Subsignal("err", Pins(1)),
+    ),
+
+    ("scratch1", 0,
+        Subsignal("cyc", Pins(1)),
+        Subsignal("stb", Pins(1)),
+        Subsignal("addr", Pins(32)),
+        Subsignal("data_wr", Pins(32)),
+        Subsignal("data_rd", Pins(32)),
+        Subsignal("sel", Pins(4)),
+        Subsignal("we", Pins(1)),
+        Subsignal("ack", Pins(1)),
+        Subsignal("err", Pins(1)),
+    ),
 ]
 
 class PiFive(SoC):
@@ -196,6 +232,9 @@ class PiFive(SoC):
 
         self.add_mem(DebugMemory(), "dbgmem")
         self.add_mgmt_periph(None, "dbgmem_mgmt", bus=self.dbgmem.debug_bus)
+
+        self.add_mem(WishboneExternal(platform.request("scratch0")), "scratch0")
+        self.add_mem(WishboneExternal(platform.request("scratch1")), "scratch1")
 
         self.add_periph(WishbonePWM(platform.request("gpio0")), "pwm0")
         self.add_periph(WishbonePWM(platform.request("gpio1")), "pwm1")
