@@ -36,13 +36,24 @@ CSR data width: 8
 # add_csr
 # add_mgmt_periph
 
+
+# CRG with no power-on reset
+class CRG_ASIC(Module):
+    def __init__(self, clk, rst=0):
+        self.clock_domains.cd_sys = ClockDomain()
+
+        self.comb += [
+            self.cd_sys.clk.eq(clk),
+            self.cd_sys.rst.eq(rst)
+        ]
+
 class SoC(Module):
     def __init__(self,
                  platform,
                  mgmt_controller=None,
                  wishbone_delay_register=False):
 
-        self.submodules.crg = CRG(platform.request("sys_clk"), platform.request("sys_rst"))
+        self.submodules.crg = CRG_ASIC(platform.request("sys_clk"), platform.request("sys_rst"))
 
         self.controllers = {}
         self.mem_bus = {}

@@ -15,7 +15,7 @@ module uart_tx (
 ); 
 
 reg [16:0] counter;
-reg [3:0] state = 0; // 0 = idle, 1 = start bit, 2-9 = data bits, 10 = end bit
+reg [3:0] state; // 0 = idle, 1 = start bit, 2-9 = data bits, 10 = end bit
 
 reg [7:0] data_send; // Buffer the data in case it changes while sending
 

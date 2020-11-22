@@ -7,7 +7,7 @@ module uart_fifo #(
     // Read port
     input wire i_rd_en,
     output reg [(WIDTH - 1):0] o_rd_data,
-    output reg o_rd_valid = 0,
+    output reg o_rd_valid,
 
     // Write port
     input wire i_wr_en,
@@ -23,8 +23,8 @@ module uart_fifo #(
 
 localparam ADDR_WIDTH = $clog2(DEPTH);
 
-reg [(ADDR_WIDTH - 1):0] wr_ptr = 0;
-reg [(ADDR_WIDTH - 1):0] rd_ptr = 0;
+reg [(ADDR_WIDTH - 1):0] wr_ptr;
+reg [(ADDR_WIDTH - 1):0] rd_ptr;
 reg [ADDR_WIDTH:0] len = 0;
 
 reg [(WIDTH - 1):0] ram[0:(DEPTH - 1)];

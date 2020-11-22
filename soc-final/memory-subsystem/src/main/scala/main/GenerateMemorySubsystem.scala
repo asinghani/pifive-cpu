@@ -3,7 +3,6 @@ package main
 import java.io.{BufferedWriter, File, FileWriter}
 
 import chisel3.stage.ChiselStage
-import jtag.JtagTest
 import mem.MemorySubsystem
 import utils._
 

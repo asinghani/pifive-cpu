@@ -66,7 +66,6 @@ initial begin
 	rst_tmp = 0;
 	#500;
 	@(negedge clk);
-	rst = 1;
 	rst_tmp = 1;
 
 	#200000;

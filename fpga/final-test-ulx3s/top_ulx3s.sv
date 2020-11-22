@@ -75,9 +75,28 @@ pll pll (
 	.locked()
 );
 
+// Synchronized reset
+reg [2:0] rst;
+always @(posedge clk) rst <= {~i_rst_n, rst[2:1]};
+
+wire [13:0] cache_mem_addr;
+wire [31:0] cache_mem_data_rd;
+wire [31:0] cache_mem_data_wr;
+wire cache_mem_we;
+wire [3:0] cache_mem_we_sel;
+
+DFFRAM cache_mem (
+    .CLK(clk),
+    .WE(cache_mem_we_sel & {4{cache_mem_we}}),
+    .EN(1),
+    .Di(cache_mem_data_wr),
+    .Do(cache_mem_data_rd),
+    .A(cache_mem_addr)
+);
+
 soc soc (
 	.sys_clk(clk),
-	.sys_rst(~i_rst_n),
+	.sys_rst(rst[0]),
 
     .hyperram_dq_i(io_hb_dq),
     .hyperram_dq_o(dq_o),

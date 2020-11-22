@@ -5,7 +5,12 @@ class CPUWrapper(Module):
     def __init__(self, use_barrel_shifter=True):
         self.instr_bus = wb.Interface(data_width=32, adr_width=32)
         self.data_bus = wb.Interface(data_width=32, adr_width=32)
-        self.disable = Signal()
+
+        self.stall_in = Signal()
+        self.stall_out = Signal()
+        self.init_pc = Signal(32)
+
+        self.cpu_reset = Signal(reset=0)
 
         self.sync += [
             self.instr_bus.cti.eq(Constant(0b000)),
@@ -35,9 +40,12 @@ class CPUWrapper(Module):
             i_data_wb_err=self.data_bus.err,
             i_data_wb_data_rd=self.data_bus.dat_r,
 
-            i_i_disable=self.disable,
+            i_i_stall_in=self.stall_in,
+            i_i_init_pc=self.init_pc,
+            o_o_stall_out=self.stall_out,
+
             i_i_clk=ClockSignal(),
-            i_i_rst=ResetSignal(),
+            i_i_rst=ResetSignal() | self.cpu_reset,
 
             p_USE_BARREL_SHIFTER=use_barrel_shifter,
             p_WISHBONE_PIPELINED=0

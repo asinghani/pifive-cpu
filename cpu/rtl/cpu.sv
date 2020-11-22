@@ -4,7 +4,7 @@ module cpu #(
     parameter INIT_PC = 32'h10000000,
     parameter USE_BARREL_SHIFTER = 1,
     parameter WISHBONE_PIPELINED = 0,
-    parameter INST_STALL_BUBBLE = 0
+    parameter INST_STALL_BUBBLE = 1
 ) (
 `ifdef VERIFICATION
     output wire [31:0] d_regs_out[0:31],
@@ -14,7 +14,10 @@ module cpu #(
     Wishbone.Controller instr_wb,
     Wishbone.Controller data_wb,
 
-    input wire i_disable,
+    input wire i_stall_in,
+    input wire [31:0] i_init_pc,
+    output wire o_stall_out,
+
     input wire i_rst,
     input wire i_clk
 );
@@ -22,7 +25,9 @@ module cpu #(
 wire alu_stall;
 wire inst_stall;
 wire data_stall;
-wire stall = alu_stall || data_stall || i_disable || (INST_STALL_BUBBLE ? 0 : inst_stall);
+wire stall = alu_stall || data_stall || i_stall_in || (INST_STALL_BUBBLE ? 0 : inst_stall);
+
+assign o_stall_out = stall;
 
 wire inst_valid;
 
@@ -34,7 +39,7 @@ instruction_t instr_1;
 instruction_t instr_2;
 
 wire [31:0] raw_instr;
-reg [31:0] pc = INIT_PC - 4;
+reg [31:0] pc;
 reg [31:0] next_pc;
 reg first;
 
@@ -218,7 +223,7 @@ end
 wire [31:0] alu_sum = alu_A + alu_B;
 always_comb begin
     if (i_rst || first) begin
-        next_pc = INIT_PC;
+        next_pc = i_init_pc;
     end
     else if (stall || inst_stall) begin
         next_pc = pc;
@@ -233,13 +238,11 @@ always_comb begin
     end
 end
 
-initial begin
-    instr_1 = 0;
-    instr_2 = 0;
-end
-
 always_ff @(posedge i_clk) begin
-    if (~stall) begin
+    if (i_rst) begin
+        instr_2 <= 0;
+    end
+    else if (~stall) begin
         instr_2 <= i_rst ? 0 : instr_1;
         pc <= next_pc;
     end

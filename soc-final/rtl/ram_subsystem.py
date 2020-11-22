@@ -2,7 +2,7 @@ from migen import *
 from litex.soc.interconnect import wishbone as wb
 
 class RAMSubsystem(Module):
-    def __init__(self, pads, bus_cached=None, bus_uncached=None):
+    def __init__(self, pads, cache_pads, bus_cached=None, bus_uncached=None):
         if bus_cached is None:
             self.bus_cached = wb.Interface(data_width=32, adr_width=32)
         else:
@@ -54,12 +54,11 @@ class RAMSubsystem(Module):
             o_io_bus_uncached_err=self.bus_uncached.err,
             o_io_bus_uncached_data_rd=self.bus_uncached.dat_r,
 
-            # Cache memory block - unused
-            o_io_cache_mem_addr=Signal(32),
-            i_io_cache_mem_rd_d=Constant(0),
-            o_io_cache_mem_we=Signal(),
-            o_io_cache_mem_we_sel=Signal(4),
-            o_io_cache_mem_wr_d=Signal(32),
+            o_io_cache_mem_addr=cache_pads.addr,
+            i_io_cache_mem_rd_d=cache_pads.data_rd,
+            o_io_cache_mem_we=cache_pads.we,
+            o_io_cache_mem_we_sel=cache_pads.we_sel,
+            o_io_cache_mem_wr_d=cache_pads.data_wr,
 
             # Main memory access
             o_io_main_mem_rd_req=main_mem_rd_req,

@@ -20,8 +20,8 @@ module wbuart #(
     input wire i_wb_we,
     input wire [3:0] i_wb_addr,
     input wire [31:0] i_wb_data,
-    output reg o_wb_ack = 0,
-    output reg o_wb_err = 0,
+    output reg o_wb_ack,
+    output reg o_wb_err,
     output reg [31:0] o_wb_data,
 
     output wire o_tx,

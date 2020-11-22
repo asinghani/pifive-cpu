@@ -6,10 +6,8 @@ module wbdbgbus #(
 
     // Time before dropping an unfinished instruction
     parameter DROP_CLKS = 2500000, // 0.1s at 25Mhz
-
     parameter FIFO_DEPTH = 128
-)
-(
+) (
     // UART
     output wire o_tx,
     input wire i_rx,

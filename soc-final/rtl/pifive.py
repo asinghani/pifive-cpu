@@ -16,6 +16,7 @@ from wishbone_spi import *
 from wishbone_bridge import *
 from wishbone_external import *
 from debug_mem import *
+from debug_probe import *
 from inst_buffer import *
 from cpu import *
 from timer import *
@@ -31,6 +32,8 @@ from simpleriscv import asm
 from ram_subsystem import RAMSubsystem
 
 from litex.soc.interconnect.csr import *
+
+CACHE_ADDR_WIDTH = 14
 
 csr_address_map = {
     "leds":        0x8800_0000,
@@ -89,6 +92,7 @@ mgmt_address_map = {
     "ibuffer_mgmt":  (0x4000_0000, 0x4000_1000, "byte", None),
     "wb_bridge_dbg": (0x4000_1000, 0x4000_2000, "byte", None),
     "dbgmem_mgmt":   (0x4000_8000, 0x4000_9000, "byte", None),
+    "debug_probe":   (0x5000_0000, 0x5000_1000, "byte", None),
 }
 
 io_map = [
@@ -176,6 +180,14 @@ io_map = [
         Subsignal("ack", Pins(1)),
         Subsignal("err", Pins(1)),
     ),
+
+    ("cache_mem", 0,
+        Subsignal("addr", Pins(CACHE_ADDR_WIDTH)),
+        Subsignal("data_rd", Pins(32)),
+        Subsignal("data_wr", Pins(32)),
+        Subsignal("we", Pins(1)),
+        Subsignal("we_sel", Pins(4)),
+    ),
 ]
 
 class PiFive(SoC):
@@ -216,16 +228,13 @@ class PiFive(SoC):
 
 
         # TODO ADD BACK
-        #self.submodules.ram = RAMSubsystem(platform.request("hyperram"))
-        #self.add_mem(None, "hyperram0", bus=self.ram.bus_cached)
-        #self.add_mem(None, "hyperram1", bus=self.ram.bus_uncached)
+        self.submodules.ram = RAMSubsystem(platform.request("hyperram"), platform.request("cache_mem"))
+        self.add_mem(None, "hyperram0", bus=self.ram.bus_cached)
+        self.add_mem(None, "hyperram1", bus=self.ram.bus_uncached)
 
-        #self.add_csr(GPIOOut(platform.request("led")), "leds")
-
-
-        ##### TODO ADD BACK
-        #self.add_csr(GPIOIn(platform.request("btn")), "btns")
-        #self.add_csr(GPIOOut(platform.request("test_out")), "test_out")
+        self.add_csr(GPIOOut(platform.request("led")), "leds")
+        self.add_csr(GPIOIn(platform.request("btn")), "btns")
+        self.add_csr(GPIOOut(platform.request("test_out")), "test_out")
 
         self.add_controller(WishboneBridge(), "wb_bridge")
         self.add_mgmt_periph(None, "wb_bridge_dbg", bus=self.wb_bridge.debug_bus)
@@ -233,11 +242,11 @@ class PiFive(SoC):
         self.add_mem(DebugMemory(), "dbgmem")
         self.add_mgmt_periph(None, "dbgmem_mgmt", bus=self.dbgmem.debug_bus)
 
-        self.add_mem(WishboneExternal(platform.request("scratch0")), "scratch0")
-        self.add_mem(WishboneExternal(platform.request("scratch1")), "scratch1")
+        #self.add_mem(WishboneExternal(platform.request("scratch0")), "scratch0")
+        #self.add_mem(WishboneExternal(platform.request("scratch1")), "scratch1")
 
-        self.add_periph(WishbonePWM(platform.request("gpio0")), "pwm0")
-        self.add_periph(WishbonePWM(platform.request("gpio1")), "pwm1")
+        #self.add_periph(WishbonePWM(platform.request("gpio0")), "pwm0")
+        #self.add_periph(WishbonePWM(platform.request("gpio1")), "pwm1")
 
         self.add_periph(WishboneROM("Test SoC User Space"), "user_ident")
         self.add_mgmt_periph(WishboneROM("Test SoC Mgmt Space"), "mgmt_ident")
@@ -254,23 +263,39 @@ class PiFive(SoC):
         #self.add_mem(wb.SRAM(512, init=[0xDEADBEEF], bus=wb.Interface(data_width=32, adr_width=32)), "dram")
 
 
-        self.add_periph(WishboneUART(platform.request("uart2"), fifo_depth=4), "uart")
+        #self.add_periph(WishboneUART(platform.request("uart2"), fifo_depth=4), "uart")
 
-        self.add_periph(WishboneI2C(platform.request("i2c")), "i2c")
+        #self.add_periph(WishboneI2C(platform.request("i2c")), "i2c")
 
         self.add_periph(UptimeTimer(), "uptime")
         self.add_periph(Timer(), "timer0")
         self.add_periph(Timer(), "timer1")
 
-        #self.add_controller(WishboneDebugBus(platform.request("uart0"), tmp_clk, baud=115200), "debugbus")
+        self.add_controller(WishboneDebugBus(platform.request("uart0"), tmp_clk, baud=115200), "debugbus")
         #self.comb += platform.request("led").eq(Mux(self.debugbus.ctr[0:9] == self.debugbus.ctr, self.debugbus.ctr >> 1, Constant(255)))
 
         self.submodules.mgmt_ctrl = WishboneDebugBus(platform.request("uart1"), tmp_clk, baud=115200)
         self.sync += self.mgmt_ctrl.bus.connect(mgmt_bus)
 
-        cpu = CPUWrapper()
-        self.add_controller(cpu, "cpu_ibus", bus=cpu.instr_bus)
-        self.add_controller(None, "cpu_dbus", bus=cpu.data_bus)
+
+        self.add_mgmt_periph(DebugProbe(original_init_pc=0x1000_0000,
+                                        probe_width=64,
+                                        output_width=64), "debug_probe")
+
+        self.comb += self.debug_probe.probe.eq(self.debug_probe.output[::-1])
+
+        self.submodules.cpu = CPUWrapper()
+        self.add_controller(None, "cpu_ibus", bus=self.cpu.instr_bus)
+        self.add_controller(None, "cpu_dbus", bus=self.cpu.data_bus)
+
+        self.comb += self.cpu.stall_in.eq(self.debug_probe.stall_out)
+        self.comb += self.debug_probe.stall_in.eq(self.cpu.stall_out)
+
+        self.comb += self.cpu.init_pc.eq(0x1000_0000) #self.debug_probe.init_pc)
+        self.comb += self.cpu.cpu_reset.eq(self.debug_probe.reset_out)
+
+        self.comb += self.ram.flush_all.eq(self.debug_probe.flush_out)
+
 
         #### TODO ADD BACK
         #self.add_csr(GPIOOut(cpu.disable), "cpu_disable")
@@ -301,7 +326,7 @@ class PiFive(SoC):
     def get_io(cls):
         return io_map
 
-def test_program():
+def test_program2():
     p = asm.Program()
     led_addr = "x1"
     led_data = "x2"
@@ -313,7 +338,7 @@ def test_program():
 
     return p.machine_code
 
-def test_program2():
+def test_program():
     p = asm.Program()
     CTR_MAX = 2000000
     led_addr = "x1"
@@ -327,8 +352,8 @@ def test_program2():
     p.ADDI(ctr_max, ctr_max, CTR_MAX & ((1 << 12) - 1))
 
     p.LABEL("start")
-    #p.XORI(led_data, led_data, 0b1111)
-    p.LW(led_addr, led_data, 0x400) # switch value
+    p.XORI(led_data, led_data, 0b1111)
+    #p.LW(led_addr, led_data, 0x400) # switch value
     p.SW(led_addr, led_data, 0)
     p.ADDI(ctr, "x0", 0)
     p.LABEL("ctr")

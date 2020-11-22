@@ -37,5 +37,5 @@ est-util: build/top.v
 .PHONY: build/MemorySubsystem.v
 build/MemorySubsystem.v:
 	mkdir -p build
-	make -C memory-subsystem build/MemorySubsystem.v
+	make -C memory-subsystem build/MemorySubsystem.v > build/scala-build.log
 	cp memory-subsystem/build/MemorySubsystem.v build/MemorySubsystem.v
