@@ -7,3 +7,7 @@ To run a build on ULX3S FPGA: Run `make ecppack` in directory `fpga/final-test-u
 To run a generic build: Run `make build/top.v` in directory `soc-final/`.
 
 To run the RISC-V test suite: Run `make test` in directory `cpu/`.
+
+# License
+
+[Apache](LICENSE)
