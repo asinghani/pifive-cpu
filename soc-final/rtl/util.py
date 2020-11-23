@@ -10,7 +10,6 @@ from third_party import gen_verilog
 from litex.soc.interconnect import csr, csr_bus
 from litex.soc.interconnect import wishbone as wb
 
-
 class VerilogPlatform(GenericPlatform):
     def __init__(self, io):
         GenericPlatform.__init__(self, "", io)
@@ -135,4 +134,10 @@ def print_mem_map(data, offset=0):
             print_mem_map(x[2], offset=offset + 1)
             print()
 
+# Converts dict into pads
+def make_pads_obj(data):
+    obj = lambda: None # Junk object
+    for key, value in data.items():
+        setattr(obj, key, value)
 
+    return obj

@@ -18,6 +18,7 @@ from wishbone_external import *
 from debug_mem import *
 from debug_probe import *
 from inst_buffer import *
+from io_control import *
 from cpu import *
 from timer import *
 
@@ -75,6 +76,8 @@ wb_address_map = {
     "pwm0":       (0x8000_1000, 0x8000_1010, "byte", None),
     "pwm1":       (0x8000_1010, 0x8000_1020, "byte", None),
 
+    "ioctrl":     (0x8100_0000, 0x8101_0000, "byte", None),
+
     "timer0":     (0x8000_2000, 0x8000_2020, "byte", None),
     "timer1":     (0x8000_2020, 0x8000_2040, "byte", None),
     "uptime":     (0x8000_2040, 0x8000_2060, "byte", None),
@@ -92,68 +95,34 @@ mgmt_address_map = {
     "wb_bridge_dbg": (0x4000_1000, 0x4000_2000, "byte", None),
     "dbgmem_mgmt":   (0x4000_8000, 0x4000_9000, "byte", None),
     "debug_probe":   (0x5000_0000, 0x5000_1000, "byte", None),
+    "ioctrl_mgmt":   (0x8100_0000, 0x8101_0000, "byte", None),
 }
+
+NUM_IO = 38
 
 io_map = [
     ("sys_clk", 0, Pins(1)),
     ("sys_rst", 0, Pins(1)),
 
-    ("uart0", 0,
-        Subsignal("tx", Pins(1)),
-        Subsignal("rx", Pins(1)),
-    ),
+    *[(
+        ("io{}".format(i), 0,
+             Subsignal("i", Pins(1)),
+             Subsignal("o", Pins(1)),
+             Subsignal("oe", Pins(1)),
+        )
+    ) for i in range(0, NUM_IO)],
 
-    ("uart1", 0,
-        Subsignal("tx", Pins(1)),
-        Subsignal("rx", Pins(1)),
-    ),
-
-    ("uart2", 0,
-        Subsignal("tx", Pins(1)),
-        Subsignal("rx", Pins(1)),
-    ),
-
-    ("i2c", 0,
-        Subsignal("scl_i", Pins(1)),
-        Subsignal("scl_o", Pins(1)),
-        Subsignal("scl_oen", Pins(1)),
-        Subsignal("sda_i", Pins(1)),
-        Subsignal("sda_o", Pins(1)),
-        Subsignal("sda_oen", Pins(1)),
-    ),
-
-    ("spi0", 0,
-        Subsignal("mosi", Pins(1)),
-        Subsignal("miso", Pins(1)),
-        Subsignal("clk", Pins(1)),
-    ),
-
-    ("flash", 0,
-        Subsignal("dq", Pins(4)),
-        Subsignal("cs_n", Pins(1)),
-        Subsignal("clk", Pins(1)),
-    ),
-
+    # TODO temp remove
     ("led", 0, Pins(8)),
-    ("btn", 0, Pins(6)),
 
-    ("gpio0", 0, Pins(1)),
-    ("gpio1", 0, Pins(1)),
+    ("uart_user_dbg", 0,
+        Subsignal("tx", Pins(1)),
+        Subsignal("rx", Pins(1)),
+    ),
 
-    ("test_out", 0, Pins(8)),
-
-    ("hyperram", 0,
-        Subsignal("dq_i", Pins(8)),
-        Subsignal("dq_o", Pins(8)),
-        Subsignal("dq_oe", Pins(1)),
-
-        Subsignal("rwds_i", Pins(1)),
-        Subsignal("rwds_o", Pins(1)),
-        Subsignal("rwds_oe", Pins(1)),
-
-        Subsignal("ck", Pins(1)),
-        Subsignal("rst_n", Pins(1)),
-        Subsignal("cs_n", Pins(1)),
+    ("uart_mgmt_dbg", 0,
+        Subsignal("tx", Pins(1)),
+        Subsignal("rx", Pins(1)),
     ),
 
     ("scratch0", 0,
@@ -191,114 +160,121 @@ io_map = [
 
 class PiFive(SoC):
     def __init__(self, platform):
-        # TODO syncronize and make external
         mgmt_bus = wb.Interface(data_width=32, adr_width=32)
         super().__init__(
             platform, mgmt_controller=mgmt_bus,
             wishbone_delay_register=False
         )
 
-        tmp_clk = int(25e6)
+        """hyperram_pads = make_pads_obj({
+            "dq_i": Signal(8),
+            "dq_o": Signal(8),
+            "dq_oe": Signal(1),
 
-        """flash = IS25LP032(Codes.READ_1_1_1)
-        self.submodules.spiflash_phy = LiteSPIPHY(
-            pads    = platform.request("flash"),
-            flash   = flash,
-            device  = "generic")
+            "rwds_i": Signal(1),
+            "rwds_o": Signal(1),
+            "rwds_oe": Signal(1),
 
-    #    self.add_csr(spiflash_phy, "spiflash_phy")
+            "ck": Signal(1),
+            "rst_n": Signal(1),
+            "cs_n": Signal(1),
+        })"""
 
-        self.submodules.spiflash_mmap = LiteSPI(
-            phy             = self.spiflash_phy,
-            clk_freq        = tmp_clk,
-            mmap_endianness = "little")
+        spi_pads = make_pads_obj({
+            "mosi": Signal(1),
+            "miso": Signal(1),
+            "clk": Signal(1),
+        })
 
-    #    self.add_csr(spiflash_mmap, "spiflash_mmap")
-        self.add_mem(None, "spiflash", bus=self.spiflash_mmap.bus)"""
-        spi_pads = platform.request("flash")
-        """pads = lambda:None
-        pads.hold = spi_pads.dq[3]
-        pads.wp = spi_pads.dq[2]
-        pads.miso = spi_pads.dq[1]
-        pads.mosi = spi_pads.dq[0]
-        pads.clk = spi_pads.clk
-        pads.cs_n = spi_pads.cs_n"""
-        #self.add_mem(SpiFlashQuadReadWrite(spi_pads, dummy=16, div=2, with_bitbang=False, endianness="little"), "spiflash")
+        # IO control setup
+        io_config = [
+            {
+                "index": 0, "name": "gpio0 / spi_mosi", "mode": "standard", "sync": True,
+                "options": [
+                    (1, "spi", spi_pads.mosi, spi_pads.mosi, Constant(1)),
+                ],
+            },
+            {
+                "index": 1, "name": "gpio1 / spi_miso", "mode": "standard", "sync": True,
+                "options": [
+                    (1, "spi", spi_pads.miso, Signal(), Constant(0)),
+                ],
+            },
+            {
+                "index": 2, "name": "gpio2 / spi_clk", "mode": "standard", "sync": True,
+                "options": [
+                    (1, "spi", spi_pads.clk, spi_pads.clk, Constant(1)),
+                ],
+            },
 
+            *[{
+                "index": i, "name": "gpio{}".format(i), "mode": "standard", "sync": True,
+                "options": [],
+            } for i in range(3, NUM_IO)]
+        ]
 
-        # TODO ADD BACK
-        self.submodules.ram = RAMSubsystem(platform.request("hyperram"), platform.request("cache_mem"))
-        self.add_mem(None, "hyperram0", bus=self.ram.bus_cached)
-        self.add_mem(None, "hyperram1", bus=self.ram.bus_uncached)
+        """I/O controller setup"""
+        io_pins = {"io{}".format(i): platform.request("io{}".format(i)) for i in range(NUM_IO)}
+        self.add_periph(IOControl(io_pins, io_config), "ioctrl")
+        self.add_mgmt_periph(None, "ioctrl_mgmt", bus=self.ioctrl.debug_bus)
 
-        self.add_csr(GPIOOut(platform.request("led")), "leds")
-        self.add_csr(GPIOIn(platform.request("btn")), "btns")
-        self.add_csr(GPIOOut(platform.request("test_out")), "test_out")
+        """I/O peripherals"""
+        self.add_periph(WishboneSPI(spi_pads), "spi0")
 
+        """External memories"""
+        #self.submodules.ram = RAMSubsystem(platform.request("hyperram"), platform.request("cache_mem"))
+        #self.add_mem(None, "hyperram0", bus=self.ram.bus_cached)
+        #self.add_mem(None, "hyperram1", bus=self.ram.bus_uncached)
+
+        """Internal memories"""
+        self.add_mem(WishboneROM(bootrom(), nullterm=False, endianness="little"), "bootrom")
+
+        self.add_mem(InstBuffer(size=8), "ibuffer")
+        self.add_mgmt_periph(None, "ibuffer_mgmt", bus=self.ibuffer.debug_bus)
+
+        #self.add_mem(WishboneExternal(platform.request("scratch0")), "scratch0")
+        #self.add_mem(WishboneExternal(platform.request("scratch1")), "scratch1")
+
+        """Misc non-I/O user-side peripherals"""
+        self.add_periph(WishboneROM("Test SoC User Space"), "user_ident")
+        self.add_periph(UptimeTimer(), "uptime")
+        self.add_periph(Timer(), "timer0")
+        self.add_periph(Timer(), "timer1")
+
+        """Management-core-side peripherals"""
         self.add_controller(WishboneBridge(), "wb_bridge")
         self.add_mgmt_periph(None, "wb_bridge_dbg", bus=self.wb_bridge.debug_bus)
 
         self.add_mem(DebugMemory(), "dbgmem")
         self.add_mgmt_periph(None, "dbgmem_mgmt", bus=self.dbgmem.debug_bus)
 
-        #self.add_mem(WishboneExternal(platform.request("scratch0")), "scratch0")
-        #self.add_mem(WishboneExternal(platform.request("scratch1")), "scratch1")
-
-        #self.add_periph(WishbonePWM(platform.request("gpio0")), "pwm0")
-        #self.add_periph(WishbonePWM(platform.request("gpio1")), "pwm1")
-
-        self.add_periph(WishboneROM("Test SoC User Space"), "user_ident")
         self.add_mgmt_periph(WishboneROM("Test SoC Mgmt Space"), "mgmt_ident")
 
-        self.add_periph(WishboneSPI(platform.request("spi0")), "spi0")
+        self.add_mgmt_periph(DebugProbe(probe_width=64, output_width=64), "debug_probe")
+        #self.comb += self.ram.flush_all.eq(self.debug_probe.flush_out)
 
-        self.add_mem(InstBuffer(size=8), "ibuffer")
-        self.add_mgmt_periph(None, "ibuffer_mgmt", bus=self.ibuffer.debug_bus)
-
-        self.add_mem(WishboneROM(bootrom(), nullterm=False, endianness="little"), "bootrom")
-
-        #self.add_mem(wb.SRAM(512, init=[0x00000113, 0x40000237, 0x00020213, 0x800001B7, 0x00018193, 0xFFF14113, 0x0021A023, 0x009890B7, 0x68008093, 0xFFF08093, 0x00122023, 0xFE104CE3, 0xFE5FF06F, 0x80000137, 0x00010113, 0x00212023], bus=wb.Interface(data_width=32, adr_width=32)), "iram")
-
-        #self.add_mem(wb.SRAM(512, init=[0xDEADBEEF], bus=wb.Interface(data_width=32, adr_width=32)), "dram")
-
-
-        #self.add_periph(WishboneUART(platform.request("uart2"), fifo_depth=4), "uart")
-
-        #self.add_periph(WishboneI2C(platform.request("i2c")), "i2c")
-
-        self.add_periph(UptimeTimer(), "uptime")
-        self.add_periph(Timer(), "timer0")
-        self.add_periph(Timer(), "timer1")
-
-        self.add_controller(WishboneDebugBus(platform.request("uart0"), tmp_clk, baud=115200), "debugbus")
-        #self.comb += platform.request("led").eq(Mux(self.debugbus.ctr[0:9] == self.debugbus.ctr, self.debugbus.ctr >> 1, Constant(255)))
-
-        self.submodules.mgmt_ctrl = WishboneDebugBus(platform.request("uart1"), tmp_clk, baud=115200)
-        self.sync += self.mgmt_ctrl.bus.connect(mgmt_bus)
-
-
-        self.add_mgmt_periph(DebugProbe(original_init_pc=0x1000_0000,
-                                        probe_width=64,
-                                        output_width=64), "debug_probe")
-
+        # TODO remove
         self.comb += self.debug_probe.probe.eq(self.debug_probe.output[::-1])
 
+        """Temporary debug utilities (for testing only)"""
+        tmp_clk = int(25e6)
+        self.add_controller(WishboneDebugBus(platform.request("uart_user_dbg"), tmp_clk, baud=115200), "debugbus")
+        #self.comb += platform.request("led").eq(Mux(self.debugbus.ctr[0:9] == self.debugbus.ctr, self.debugbus.ctr >> 1, Constant(255)))
+        self.submodules.mgmt_ctrl = WishboneDebugBus(platform.request("uart_mgmt_dbg"), tmp_clk, baud=115200)
+        self.sync += self.mgmt_ctrl.bus.connect(mgmt_bus)
+        self.add_csr(GPIOOut(platform.request("led")), "leds")
+
+        """CPU Instantiation"""
         self.submodules.cpu = CPUWrapper()
         self.add_controller(None, "cpu_ibus", bus=self.cpu.instr_bus)
         self.add_controller(None, "cpu_dbus", bus=self.cpu.data_bus)
+        self.comb += self.cpu.init_pc.eq(self.wb_address("bootrom")[0])
 
         self.comb += self.cpu.stall_in.eq(self.debug_probe.stall_out)
         self.comb += self.debug_probe.stall_in.eq(self.cpu.stall_out)
-
-        self.comb += self.cpu.init_pc.eq(0x0000_0000) #self.debug_probe.init_pc)
         self.comb += self.cpu.cpu_reset.eq(self.debug_probe.reset_out)
 
-        self.comb += self.ram.flush_all.eq(self.debug_probe.flush_out)
-
-
-        #### TODO ADD BACK
-        #self.add_csr(GPIOOut(cpu.disable), "cpu_disable")
-
+        """Generate the bus!"""
         main_mem_map, mgmt_mem_map = self.generate_bus()
 
         print("Main Memory Map:")

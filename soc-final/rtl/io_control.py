@@ -3,7 +3,7 @@ import math
 from litex.soc.interconnect import wishbone as wb
 
 class IOControl(Module):
-    def __init__(self, pads, config, bus=None, debug_bus=None):
+    def __init__(self, pins, config, bus=None, debug_bus=None):
         if bus is None:
             self.bus = wb.Interface(data_width=32, adr_width=32)
         else:
@@ -13,11 +13,6 @@ class IOControl(Module):
             self.debug_bus = wb.Interface(data_width=32, adr_width=32)
         else:
             self.debug_bus = debug_bus
-
-        wb_rd_req = self.bus.cyc & self.bus.stb & ~self.bus.ack & ~self.bus.we
-        wb_wr_req = self.bus.cyc & self.bus.stb & ~self.bus.ack & self.bus.we
-
-        self.comb += self.bus.dat_r.eq(wb_rd_data)
 
         self.irq = Signal()
         self.sync += self.irq.eq(0)
@@ -46,7 +41,7 @@ class IOControl(Module):
                 }
             ]
 
-            state = {8'b0, ind[7:0], 4'b0, type[1:0], actual_enable, actual_select[3:0], actual_irqmode[1:0], actual_oe, actual_out, actual_in}
+            state = {4'b0, type[1:0], actual_enable, actual_select[3:0], actual_irqmode[1:0], actual_oe, actual_out, actual_in}
             Dbg reg: {15'b0, 1'b0, state[15:0]}
             CPU reg: {state[15:0], 1'b0, enable, select[3:0], irqmode[1:0], 5'b0, gpio_oe, gpio_out, gpio_in}
 
@@ -79,24 +74,24 @@ class IOControl(Module):
                 assert "options" not in pin or len(pin["options"]) == 0
                 assert "passthrough" in pin
 
-            pad = getattr(pads, "io{}".format(pin_ind))
-            ind = Constant(i, bits_sign=8)
+            pad = pins["io{}".format(pin_ind)]
+            ind = Constant(pin_ind, bits_sign=8)
 
-            if sync:
+            if pin["sync"]:
                 ff1   = Signal(reset_less=True)
                 ff2   = Signal(reset_less=True)
                 pad_i = Signal(reset_less=True)
 
                 self.sync += [
-                    ff1.eq(pads.i),
+                    ff1.eq(pad.i),
                     ff2.eq(ff1),
                     pad_i.eq(ff2),
                 ]
             else:
-                pad_i = pads.i
+                pad_i = pad.i
 
-            pad_o  = pads.o
-            pad_oe = pads.oe
+            pad_o  = pad.o
+            pad_oe = pad.oe
 
             if mode == "standard":
                 typ = Constant(0, bits_sign=2)
@@ -120,9 +115,9 @@ class IOControl(Module):
             enable   = Signal(reset=0)
 
             if mode == "passthrough-direct":
-                state    = Cat(Constant(0, bits_sign=3), irqmode, select, enable, typ, Constant(0, bits_sign=4), ind, Constant(0, bits_sign=4))
+                state = Cat(Constant(0, bits_sign=3), irqmode, select, enable, typ, Constant(0, bits_sign=4))
             else:
-                state    = Cat(pad_i, pad_o, pad_oe, irqmode, select, enable, typ, Constant(0, bits_sign=4), ind, Constant(0, bits_sign=4))
+                state = Cat(pad_i, pad_o, pad_oe, irqmode, select, enable, typ, Constant(0, bits_sign=4))
 
             assert len(state) == 16
 
@@ -134,9 +129,9 @@ class IOControl(Module):
 
             if mode == "passthrough-direct" or mode == "passthrough":
                 self.comb += [
-                    pin["passthrough"][0].eq(pads_i),
-                    pads_o.eq(pin["passthrough"][1]),
-                    pads_oe.eq(pin["passthrough"][2]),
+                    pin["passthrough"][0].eq(pad_i),
+                    pad_o.eq(pin["passthrough"][1]),
+                    pad_oe.eq(pin["passthrough"][2]),
                 ]
             else:
                 # Set up standard I/O multiplexing
@@ -146,20 +141,20 @@ class IOControl(Module):
 
                 cases = {}
                 cases["default"] = [
-                    pads_o.eq(gpio_out),
-                    pads_oe.eq(gpio_oe),
+                    pad_o.eq(gpio_out),
+                    pad_oe.eq(gpio_oe),
                 ]
 
-                self.comb += gpio_in.eq(pads_i)
+                self.comb += gpio_in.eq(pad_i)
                 for opt_ind, name, i, o, oe in options:
-                    self.comb += i.eq(pads_i)
+                    self.comb += i.eq(pad_i)
                     cases[opt_ind] = [
-                        pads_o.eq(o),
-                        pads_oe.eq(oe),
+                        pad_o.eq(o),
+                        pad_oe.eq(oe),
                     ]
 
                 self.comb += [
-                    If(~enable, pads_oe.eq(0), pads_o.eq(0)).
+                    If(~enable, pad_oe.eq(0), pad_o.eq(0)).
                     Else(Case(select, cases))
                 ]
 
