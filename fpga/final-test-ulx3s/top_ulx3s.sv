@@ -75,9 +75,17 @@ pll pll (
 	.locked()
 );
 
-// Synchronized reset
-reg [2:0] rst;
-always @(posedge clk) rst <= {~i_rst_n, rst[2:1]};
+// Bit of a hack to make reset not trigger on startup
+reg [2:0] rst_sync;
+always @(posedge clk) rst_sync <= {~i_rst_n, rst_sync[2:1]};
+
+reg [24:0] rst_ctr = 0;
+always_ff @(posedge clk) begin
+    if (~rst_sync) rst_ctr <= 0;
+    else if (rst_ctr < 5000000) rst_ctr <= rst_ctr + 1;
+end
+
+wire sys_rst = (rst_ctr >= 4500000);
 
 wire [13:0] cache_mem_addr;
 wire [31:0] cache_mem_data_rd;
@@ -96,7 +104,7 @@ DFFRAM cache_mem (
 
 soc soc (
 	.sys_clk(clk),
-	.sys_rst(rst[0]),
+	.sys_rst(sys_rst),
 
     .hyperram_dq_i(io_hb_dq),
     .hyperram_dq_o(dq_o),

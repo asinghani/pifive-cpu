@@ -47,7 +47,7 @@ class IOControl(Module):
             ]
 
             state = {8'b0, ind[7:0], 4'b0, type[1:0], actual_enable, actual_select[3:0], actual_irqmode[1:0], actual_oe, actual_out, actual_in}
-            Dbg reg: {16'b0, state[15:0]}
+            Dbg reg: {15'b0, 1'b0, state[15:0]}
             CPU reg: {state[15:0], 1'b0, enable, select[3:0], irqmode[1:0], 5'b0, gpio_oe, gpio_out, gpio_in}
 
             Data:
@@ -168,6 +168,7 @@ class IOControl(Module):
                     If(falling & irqmode == 2, self.irq.eq(1))
                 ]
 
+            assert pin_ind == len(io)
             io.append({
                 "index": pin_ind,
                 "gpio_in": gpio_in,
@@ -186,35 +187,34 @@ class IOControl(Module):
             self.bus.ack.eq(0),
             self.bus.err.eq(0),
 
+            If(self.bus.stb & self.bus.cyc & ~self.bus.ack,
+               self.bus.ack.eq(1),
+
+               *[If((self.bus.adr >> 2) == port["index"],
+                    self.bus.dat_r.eq(port["cpu_reg"]),
+                    If(self.bus.we & self.bus.sel[0],
+                       port["gpio_out"].eq(self.bus.dat_w[1]),
+                       port["gpio_oe"].eq(self.bus.dat_w[2])),
+                    If(self.bus.we & self.bus.sel[1],
+                       port["irqmode"].eq(self.bus.dat_w[8:10]),
+                       port["select"].eq(self.bus.dat_w[10:14]),
+                       port["enable"].eq(self.bus.dat_w[14]))
+                    ) for port in io]
+              )
+        ]
+
+        # Debug bus access
+        self.sync += [
+            self.debug_bus.ack.eq(0),
+            self.debug_bus.err.eq(0),
+
             If(self.debug_bus.stb & self.debug_bus.cyc & ~self.debug_bus.ack,
                self.debug_bus.ack.eq(1),
 
-               If((self.debug_bus.adr >> 2) == 0,
-                  If(enabled & self.debug_bus.we & self.debug_bus.sel[1],
-                     If(self.debug_bus.dat_w[8], self.bus.ack.eq(1)).
-                     Elif(self.debug_bus.dat_w[9], self.bus.err.eq(1))),
-
-                  self.debug_bus.dat_r.eq(Cat(wb_wr_req, wb_rd_req, Constant(0, bits_sign=2), self.bus.sel))),
-
-               If((self.debug_bus.adr >> 2) == 1,
-                  self.debug_bus.dat_r.eq(self.bus.adr)),
-
-               If((self.debug_bus.adr >> 2) == 2,
-                  self.debug_bus.dat_r.eq(self.bus.dat_w)),
-
-               If((self.debug_bus.adr >> 2) == 3,
-                  If(self.debug_bus.we & self.debug_bus.sel[0], wb_rd_data[0:8].eq(self.debug_bus.dat_w[0:8])),
-                  If(self.debug_bus.we & self.debug_bus.sel[1], wb_rd_data[8:16].eq(self.debug_bus.dat_w[8:16])),
-                  If(self.debug_bus.we & self.debug_bus.sel[2], wb_rd_data[16:24].eq(self.debug_bus.dat_w[16:24])),
-                  If(self.debug_bus.we & self.debug_bus.sel[3], wb_rd_data[24:32].eq(self.debug_bus.dat_w[24:32])),
-                  self.debug_bus.dat_r.eq(wb_rd_data)),
-
-               If((self.debug_bus.adr >> 2) == 4,
-                  If(self.debug_bus.we & self.debug_bus.sel[0], enable_entry[0:8].eq(self.debug_bus.dat_w[0:8])),
-                  If(self.debug_bus.we & self.debug_bus.sel[1], enable_entry[8:16].eq(self.debug_bus.dat_w[8:16])),
-                  If(self.debug_bus.we & self.debug_bus.sel[2], enable_entry[16:24].eq(self.debug_bus.dat_w[16:24])),
-                  If(self.debug_bus.we & self.debug_bus.sel[3], enable_entry[24:32].eq(self.debug_bus.dat_w[24:32])),
-                  self.debug_bus.dat_r.eq(enable_entry)),
+               *[If((self.debug_bus.adr >> 2) == port["index"],
+                    self.debug_bus.dat_r.eq(port["dbg_reg"]),
+                    ) for port in io]
               )
         ]
+
 

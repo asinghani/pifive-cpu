@@ -26,7 +26,6 @@ from litespi.opcodes import SpiNorFlashOpCodes as Codes
 from litespi.phy.generic import LiteSPIPHY
 from litespi import LiteSPI
 
-# TODO temp - remove
 from simpleriscv import asm
 
 from ram_subsystem import RAMSubsystem
@@ -56,7 +55,7 @@ csr_address_map = {
 # 0x0000_0XXX =    4 KiB
 
 wb_address_map = {
-    "iram":       (0x1000_0000, 0x2000_0000, "byte", None),
+    "bootrom":    (0x0000_0000, 0x1000_0000, "byte", None),
     "dram":       (0x4000_0000, 0x5000_0000, "word", None),
 
     "hyperram0":  (0xA000_0000, 0xB000_0000, "byte", None),
@@ -256,7 +255,7 @@ class PiFive(SoC):
         self.add_mem(InstBuffer(size=8), "ibuffer")
         self.add_mgmt_periph(None, "ibuffer_mgmt", bus=self.ibuffer.debug_bus)
 
-        self.add_mem(WishboneROM(test_program(), nullterm=False, endianness="little"), "iram")
+        self.add_mem(WishboneROM(bootrom(), nullterm=False, endianness="little"), "bootrom")
 
         #self.add_mem(wb.SRAM(512, init=[0x00000113, 0x40000237, 0x00020213, 0x800001B7, 0x00018193, 0xFFF14113, 0x0021A023, 0x009890B7, 0x68008093, 0xFFF08093, 0x00122023, 0xFE104CE3, 0xFE5FF06F, 0x80000137, 0x00010113, 0x00212023], bus=wb.Interface(data_width=32, adr_width=32)), "iram")
 
@@ -291,7 +290,7 @@ class PiFive(SoC):
         self.comb += self.cpu.stall_in.eq(self.debug_probe.stall_out)
         self.comb += self.debug_probe.stall_in.eq(self.cpu.stall_out)
 
-        self.comb += self.cpu.init_pc.eq(0x1000_0000) #self.debug_probe.init_pc)
+        self.comb += self.cpu.init_pc.eq(0x0000_0000) #self.debug_probe.init_pc)
         self.comb += self.cpu.cpu_reset.eq(self.debug_probe.reset_out)
 
         self.comb += self.ram.flush_all.eq(self.debug_probe.flush_out)
@@ -338,7 +337,7 @@ def test_program2():
 
     return p.machine_code
 
-def test_program():
+def bootrom():
     p = asm.Program()
     CTR_MAX = 2000000
     led_addr = "x1"
