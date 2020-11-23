@@ -19,6 +19,7 @@ class DebugProbe(Module):
         _outputs = [Signal(32) for i in range(0, output_width, 32)]
         self.probe = Signal(probe_width)
         self.output = Cat(*_outputs)
+        # TODO verify probes
 
         self.stall_out = Signal(reset=0)
         self.stall_in = Signal()

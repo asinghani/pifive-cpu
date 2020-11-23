@@ -27,7 +27,7 @@ build/top_generic.v:
 	mkdir -p build
 	make -C ../../soc-final build/top.v
 	cp ../../soc-final/build/top.v build/top_generic.v
-	cp ../../soc-final/build/*.init build/ # TODO
+	#cp ../../soc-final/build/*.init build/ # TODO
 
 # Generate PLL
 .PHONY: build/pll.v
