@@ -19,7 +19,6 @@ class DebugProbe(Module):
         _outputs = [Signal(32) for i in range(0, output_width, 32)]
         self.probe = Signal(probe_width)
         self.output = Cat(*_outputs)
-        # TODO verify probes
 
         self.stall_out = Signal(reset=0)
         self.stall_in = Signal()
@@ -66,7 +65,7 @@ class DebugProbe(Module):
             self.stall_out.eq(0),
             If(enabled & stall, self.stall_out.eq(1)),
 
-            # TODO finish stepper
+            # TODO fix stepper
             #If(enabled & stall & step_cycle,
             #   self.stall_out.eq(0),
             #   step_cycle.eq(0)).
@@ -119,14 +118,14 @@ class DebugProbe(Module):
                   self.bus.dat_r.eq(enable_entry)),
 
                If((self.bus.adr >= Constant(0x200)) & (self.bus.adr < Constant(0x400)),
-                  self.bus.dat_r.eq(probes[(self.bus.adr >> 2)])),
+                  self.bus.dat_r.eq(probes[((self.bus.adr-0x200) >> 2)])),
 
                If((self.bus.adr >= Constant(0x400)) & (self.bus.adr < Constant(0x600)),
-                  If(self.bus.we & self.bus.sel[0], outputs[(self.bus.adr >> 2)][0:8].eq(self.bus.dat_w[0:8])),
-                  If(self.bus.we & self.bus.sel[1], outputs[(self.bus.adr >> 2)][8:16].eq(self.bus.dat_w[8:16])),
-                  If(self.bus.we & self.bus.sel[2], outputs[(self.bus.adr >> 2)][16:24].eq(self.bus.dat_w[16:24])),
-                  If(self.bus.we & self.bus.sel[3], outputs[(self.bus.adr >> 2)][24:32].eq(self.bus.dat_w[24:32])),
-                  self.bus.dat_r.eq(outputs[(self.bus.adr >> 2)])),
+                  If(self.bus.we & self.bus.sel[0], outputs[((self.bus.adr-0x400) >> 2)][0:8].eq(self.bus.dat_w[0:8])),
+                  If(self.bus.we & self.bus.sel[1], outputs[((self.bus.adr-0x400) >> 2)][8:16].eq(self.bus.dat_w[8:16])),
+                  If(self.bus.we & self.bus.sel[2], outputs[((self.bus.adr-0x400) >> 2)][16:24].eq(self.bus.dat_w[16:24])),
+                  If(self.bus.we & self.bus.sel[3], outputs[((self.bus.adr-0x400) >> 2)][24:32].eq(self.bus.dat_w[24:32])),
+                  self.bus.dat_r.eq(outputs[((self.bus.adr-0x400) >> 2)])),
               )
         ]
 

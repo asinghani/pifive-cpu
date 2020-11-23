@@ -1,6 +1,6 @@
 num_io = 38
 
-include = [0, 1, 2, 3, 4, 5]
+include = list(range(18))
 
 for i in range(num_io):
     if i in include:

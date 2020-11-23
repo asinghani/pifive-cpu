@@ -166,7 +166,7 @@ class PiFive(SoC):
             wishbone_delay_register=False
         )
 
-        """hyperram_pads = make_pads_obj({
+        hr_pads = make_pads_obj({
             "dq_i": Signal(8),
             "dq_o": Signal(8),
             "dq_oe": Signal(1),
@@ -178,7 +178,7 @@ class PiFive(SoC):
             "ck": Signal(1),
             "rst_n": Signal(1),
             "cs_n": Signal(1),
-        })"""
+        })
 
         spi_pads = make_pads_obj({
             "mosi": Signal(1),
@@ -187,11 +187,13 @@ class PiFive(SoC):
         })
 
         # IO control setup
+        # Input-only  = (input_wire, Signal(), Constant(0))
+        # Output-only = (Signal(), output_wire, Constant(1))
         io_config = [
             {
                 "index": 0, "name": "gpio0 / spi_mosi", "mode": "standard", "sync": True,
                 "options": [
-                    (1, "spi", spi_pads.mosi, spi_pads.mosi, Constant(1)),
+                    (1, "spi", Signal(), spi_pads.mosi, Constant(1)),
                 ],
             },
             {
@@ -203,14 +205,79 @@ class PiFive(SoC):
             {
                 "index": 2, "name": "gpio2 / spi_clk", "mode": "standard", "sync": True,
                 "options": [
-                    (1, "spi", spi_pads.clk, spi_pads.clk, Constant(1)),
+                    (1, "spi", Signal(), spi_pads.clk, Constant(1)),
                 ],
             },
 
             *[{
                 "index": i, "name": "gpio{}".format(i), "mode": "standard", "sync": True,
                 "options": [],
-            } for i in range(3, NUM_IO)]
+            } for i in range(3, 6)],
+
+            {
+                "index": 6, "name": "hr_dq0", "mode": "passthrough", "sync": False,
+                "passthrough": (hr_pads.dq_i[0], hr_pads.dq_o[0], hr_pads.dq_oe),
+            },
+
+            {
+                "index": 7, "name": "hr_dq1", "mode": "passthrough", "sync": False,
+                "passthrough": (hr_pads.dq_i[1], hr_pads.dq_o[1], hr_pads.dq_oe),
+            },
+
+            {
+                "index": 8, "name": "hr_dq2", "mode": "passthrough", "sync": False,
+                "passthrough": (hr_pads.dq_i[2], hr_pads.dq_o[2], hr_pads.dq_oe),
+            },
+
+            {
+                "index": 9, "name": "hr_dq3", "mode": "passthrough", "sync": False,
+                "passthrough": (hr_pads.dq_i[3], hr_pads.dq_o[3], hr_pads.dq_oe),
+            },
+
+            {
+                "index": 10, "name": "hr_dq4", "mode": "passthrough", "sync": False,
+                "passthrough": (hr_pads.dq_i[4], hr_pads.dq_o[4], hr_pads.dq_oe),
+            },
+
+            {
+                "index": 11, "name": "hr_dq5", "mode": "passthrough", "sync": False,
+                "passthrough": (hr_pads.dq_i[5], hr_pads.dq_o[5], hr_pads.dq_oe),
+            },
+
+            {
+                "index": 12, "name": "hr_dq6", "mode": "passthrough", "sync": False,
+                "passthrough": (hr_pads.dq_i[6], hr_pads.dq_o[6], hr_pads.dq_oe),
+            },
+
+            {
+                "index": 13, "name": "hr_dq7", "mode": "passthrough", "sync": False,
+                "passthrough": (hr_pads.dq_i[7], hr_pads.dq_o[7], hr_pads.dq_oe),
+            },
+
+            {
+                "index": 14, "name": "hr_rwds", "mode": "passthrough", "sync": False,
+                "passthrough": (hr_pads.rwds_i, hr_pads.rwds_o, hr_pads.rwds_oe),
+            },
+
+            {
+                "index": 15, "name": "hr_ck", "mode": "passthrough", "sync": False,
+                "passthrough": (Signal(), hr_pads.ck, Constant(1)),
+            },
+
+            {
+                "index": 16, "name": "hr_rst_n", "mode": "passthrough", "sync": False,
+                "passthrough": (Signal(), hr_pads.rst_n, Constant(1)),
+            },
+
+            {
+                "index": 17, "name": "hr_cs_n", "mode": "passthrough", "sync": False,
+                "passthrough": (Signal(), hr_pads.cs_n, Constant(1)),
+            },
+
+            *[{
+                "index": i, "name": "gpio{}".format(i), "mode": "standard", "sync": True,
+                "options": [],
+            } for i in range(18, NUM_IO)]
         ]
 
         """I/O controller setup"""
@@ -222,9 +289,9 @@ class PiFive(SoC):
         self.add_periph(WishboneSPI(spi_pads), "spi0")
 
         """External memories"""
-        #self.submodules.ram = RAMSubsystem(platform.request("hyperram"), platform.request("cache_mem"))
-        #self.add_mem(None, "hyperram0", bus=self.ram.bus_cached)
-        #self.add_mem(None, "hyperram1", bus=self.ram.bus_uncached)
+        self.submodules.ram = RAMSubsystem(hr_pads, platform.request("cache_mem"))
+        self.add_mem(None, "hyperram0", bus=self.ram.bus_cached)
+        self.add_mem(None, "hyperram1", bus=self.ram.bus_uncached)
 
         """Internal memories"""
         self.add_mem(WishboneROM(bootrom(), nullterm=False, endianness="little"), "bootrom")

@@ -13,6 +13,18 @@ module top_ulx3s (
     inout wire io3,
     inout wire io4,
     inout wire io5,
+    inout wire io6,
+    inout wire io7,
+    inout wire io8,
+    inout wire io9,
+    inout wire io10,
+    inout wire io11,
+    inout wire io12,
+    inout wire io13,
+    inout wire io14,
+    inout wire io15,
+    inout wire io16,
+    inout wire io17,
 
 	output wire [7:0] led,
 	input wire i_clk25,
@@ -37,42 +49,42 @@ assign io4_i = io4;
 wire io5_i, io5_o, io5_oe;
 assign io5 = io5_oe ? io5_o : 1'bZ;
 assign io5_i = io5;
-wire io6_i = 1; // Placeholder
-wire io6_o; // Placeholder
-wire io6_oe; // Placeholder
-wire io7_i = 1; // Placeholder
-wire io7_o; // Placeholder
-wire io7_oe; // Placeholder
-wire io8_i = 1; // Placeholder
-wire io8_o; // Placeholder
-wire io8_oe; // Placeholder
-wire io9_i = 1; // Placeholder
-wire io9_o; // Placeholder
-wire io9_oe; // Placeholder
-wire io10_i = 1; // Placeholder
-wire io10_o; // Placeholder
-wire io10_oe; // Placeholder
-wire io11_i = 1; // Placeholder
-wire io11_o; // Placeholder
-wire io11_oe; // Placeholder
-wire io12_i = 1; // Placeholder
-wire io12_o; // Placeholder
-wire io12_oe; // Placeholder
-wire io13_i = 1; // Placeholder
-wire io13_o; // Placeholder
-wire io13_oe; // Placeholder
-wire io14_i = 1; // Placeholder
-wire io14_o; // Placeholder
-wire io14_oe; // Placeholder
-wire io15_i = 1; // Placeholder
-wire io15_o; // Placeholder
-wire io15_oe; // Placeholder
-wire io16_i = 1; // Placeholder
-wire io16_o; // Placeholder
-wire io16_oe; // Placeholder
-wire io17_i = 1; // Placeholder
-wire io17_o; // Placeholder
-wire io17_oe; // Placeholder
+wire io6_i, io6_o, io6_oe;
+assign io6 = io6_oe ? io6_o : 1'bZ;
+assign io6_i = io6;
+wire io7_i, io7_o, io7_oe;
+assign io7 = io7_oe ? io7_o : 1'bZ;
+assign io7_i = io7;
+wire io8_i, io8_o, io8_oe;
+assign io8 = io8_oe ? io8_o : 1'bZ;
+assign io8_i = io8;
+wire io9_i, io9_o, io9_oe;
+assign io9 = io9_oe ? io9_o : 1'bZ;
+assign io9_i = io9;
+wire io10_i, io10_o, io10_oe;
+assign io10 = io10_oe ? io10_o : 1'bZ;
+assign io10_i = io10;
+wire io11_i, io11_o, io11_oe;
+assign io11 = io11_oe ? io11_o : 1'bZ;
+assign io11_i = io11;
+wire io12_i, io12_o, io12_oe;
+assign io12 = io12_oe ? io12_o : 1'bZ;
+assign io12_i = io12;
+wire io13_i, io13_o, io13_oe;
+assign io13 = io13_oe ? io13_o : 1'bZ;
+assign io13_i = io13;
+wire io14_i, io14_o, io14_oe;
+assign io14 = io14_oe ? io14_o : 1'bZ;
+assign io14_i = io14;
+wire io15_i, io15_o, io15_oe;
+assign io15 = io15_oe ? io15_o : 1'bZ;
+assign io15_i = io15;
+wire io16_i, io16_o, io16_oe;
+assign io16 = io16_oe ? io16_o : 1'bZ;
+assign io16_i = io16;
+wire io17_i, io17_o, io17_oe;
+assign io17 = io17_oe ? io17_o : 1'bZ;
+assign io17_i = io17;
 wire io18_i = 1; // Placeholder
 wire io18_o; // Placeholder
 wire io18_oe; // Placeholder
@@ -176,9 +188,4 @@ soc soc (
 );
 
 endmodule
-
-
-
-
-
 
