@@ -26,6 +26,49 @@ class IOControl(Module):
 
         assert 0 < len(config) and len(config) < 256
 
+        """
+            Pad naming: io0, io1, io2, ...
+
+            Config:
+            [
+                {
+                    index: 0, # must match index of pin in array
+                    name: "", # optional
+                    mode: "standard/passthrough/passthrough-direct",
+                    sync: True/False,
+                    options: [ # Only for standard-mode
+                        (ind, name, i, o, oe), # ind must not be zero
+                        (ind, name, i, o, oe),
+                        (ind, name, i, o, oe),
+                        ... up to 16
+                    ],
+                    passthrough: (i, o, oe) # Only for passthrough-mode
+                }
+            ]
+
+            state = {8'b0, ind[7:0], 4'b0, type[1:0], actual_enable, actual_select[3:0], actual_irqmode[1:0], actual_oe, actual_out, actual_in}
+            Dbg reg: {16'b0, state[15:0]}
+            CPU reg: {state[15:0], 1'b0, enable, select[3:0], irqmode[1:0], 5'b0, gpio_oe, gpio_out, gpio_in}
+
+            Data:
+            - GPIO in
+            - GPIO out
+            - GPIO oe
+            - enable
+            - select[3:0]
+            - IRQ mode[1:0] - 0 = none, 1 = rising, 2 = falling
+
+            State:
+            - Actual out
+            - Actual in
+            - Actual oe
+            - Actual enable
+            - Actual select[3:0]
+            - Actual irq mode[1:0]
+
+            - type[1:0] - 0 = standard, 1 = passthrough, 2 = passthrough-silent
+
+        """
         # Set up I/O
         for pin_ind, pin in enumerate(config):
             assert pin["index"] == pin_ind
@@ -107,6 +150,7 @@ class IOControl(Module):
                     pads_oe.eq(gpio_oe),
                 ]
 
+                self.comb += gpio_in.eq(pads_i)
                 for opt_ind, name, i, o, oe in options:
                     self.comb += i.eq(pads_i)
                     cases[opt_ind] = [
@@ -124,66 +168,23 @@ class IOControl(Module):
                     If(falling & irqmode == 2, self.irq.eq(1))
                 ]
 
+            io.append({
+                "index": pin_ind,
+                "gpio_in": gpio_in,
+                "gpio_out": gpio_out,
+                "gpio_oe": gpio_oe,
+                "enable": enable,
+                "select": select,
+                "irqmode": irqmode,
+                "cpu_reg": cpu_reg,
+                "dbg_reg": dbg_reg,
+            })
 
-        """
-            Pad naming: io0, io1, io2, ...
-
-            Config:
-            [
-                {
-                    index: 0, # must match index of pin in array
-                    name: "", # optional
-                    mode: "standard/passthrough/passthrough-direct",
-                    sync: True/False,
-                    options: [ # Only for standard-mode
-                        (ind, name, i, o, oe), # ind must not be zero
-                        (ind, name, i, o, oe),
-                        (ind, name, i, o, oe),
-                        ... up to 16
-                    ],
-                    passthrough: (i, o, oe) # Only for passthrough-mode
-                }
-            ]
-
-            state = {8'b0, ind[7:0], 4'b0, type[1:0], actual_enable, actual_select[3:0], actual_irqmode[1:0], actual_oe, actual_out, actual_in}
-            Dbg reg: {16'b0, state[15:0]}
-            CPU reg: {state[15:0], 1'b0, enable, select[3:0], irqmode[1:0], 5'b0, gpio_oe, gpio_out, gpio_in}
-
-            Data:
-            - GPIO in
-            - GPIO out
-            - GPIO oe
-            - enable
-            - select[3:0]
-            - IRQ mode[1:0] - 0 = none, 1 = rising, 2 = falling
-            - last_in
-
-            State:
-            - Actual out
-            - Actual in
-            - Actual oe
-            - Actual enable
-            - Actual select[3:0]
-            - Actual irq mode[1:0]
-
-            - type[1:0] - 0 = standard, 1 = passthrough, 2 = passthrough-silent
-
-        """
-
-
-        # 00 = Cfg/Status {22'b0, err, ack, sel[3:0], 2'b0, rd_req, wr_req}
-        # 04 = Addr
-        # 08 = Write Data
-        # 0C = Read Data
-        # 10 = Enable
-
+        # Main bus access
+        # CPU reg: {state[15:0], 1'b0, enable, select[3:0], irqmode[1:0], 5'b0, gpio_oe, gpio_out, gpio_in}
         self.sync += [
             self.bus.ack.eq(0),
             self.bus.err.eq(0),
-
-            self.debug_bus.ack.eq(0),
-            self.debug_bus.err.eq(0),
-            self.debug_bus.dat_r.eq(0),
 
             If(self.debug_bus.stb & self.debug_bus.cyc & ~self.debug_bus.ack,
                self.debug_bus.ack.eq(1),

@@ -5,6 +5,8 @@ from litex.build.generic_platform import *
 from litex.soc.integration.soc_core import *
 from litex.soc.integration.builder import *
 
+from third_party import gen_verilog
+
 from litex.soc.interconnect import csr, csr_bus
 from litex.soc.interconnect import wishbone as wb
 
@@ -18,7 +20,7 @@ class VerilogPlatform(GenericPlatform):
         os.makedirs(build_dir, exist_ok=True)
         old_dir = os.getcwd()
         os.chdir(build_dir)
-        top_output = self.get_verilog(fragment, name=module_name)
+        top_output = gen_verilog.convert(fragment, self.constraint_manager.get_io_signals(), create_clock_domains=False, name=module_name, no_init_reg=True)
         top_output.write(filename)
         os.chdir(old_dir)
 
