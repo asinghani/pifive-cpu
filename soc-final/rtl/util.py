@@ -1,5 +1,6 @@
 import os
 from migen import *
+from migen.genlib.misc import WaitTimer
 
 from litex.build.generic_platform import *
 from litex.soc.integration.soc_core import *
@@ -111,6 +112,21 @@ class WishboneCrossbar(Module):
             self.submodules += wb.Decoder(controller, list(zip(check_fns, row)), register=register)
         for col, bus in zip(zip(*cross_points), periph_busses):
             self.submodules += wb.Arbiter(col, bus)
+
+# Based on https://github.com/enjoy-digital/litex/blob/master/litex/soc/interconnect/wishbone.py
+class WishboneTimeout(Module):
+    def __init__(self, bus, timeout_cycles = 1000000, return_error = True):
+        self.enable = Signal(reset=1)
+
+        timer = WaitTimer(timeout_cycles)
+        self.submodules += timer
+        self.comb += [
+            timer.wait.eq(bus.stb & bus.cyc & ~bus.ack),
+            If(self.enable & timer.done,
+               bus.dat_r.eq(0xFFFF_FFFF_FFFF_FFFF),
+               (bus.err.eq(1) if return_error else bus.ack.eq(1))
+            )
+        ]
 
 # N-cycle delay register
 class RegNextN(Module):

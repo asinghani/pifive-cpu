@@ -28,6 +28,7 @@ from litespi.phy.generic import LiteSPIPHY
 from litespi import LiteSPI
 
 from simpleriscv import asm
+import subprocess
 
 from ram_subsystem import RAMSubsystem
 
@@ -56,7 +57,8 @@ csr_address_map = {
 # 0x0000_0XXX =    4 KiB
 
 wb_address_map = {
-    "bootrom":    (0x0000_0000, 0x1000_0000, "byte", None),
+    "bootrom":    (0x0000_0000, 0x0100_0000, "byte", None),
+    "blinky":     (0x0100_0000, 0x0200_0000, "byte", None),
     "dram":       (0x4000_0000, 0x5000_0000, "word", None),
 
     "hyperram0":  (0xA000_0000, 0xB000_0000, "byte", None),
@@ -88,6 +90,9 @@ wb_address_map = {
 
     "dbgmem":     (0xD000_0000, 0xE000_0000, "byte", None),
 }
+
+#instr_memories = ["dram", "hyperram0", "ibuffer", "scratch0", "scratch1"]
+instr_memories = ["hyperram0", "ibuffer"]
 
 mgmt_address_map = {
     "mgmt_ident":    (0x3000_0000, 0x3000_0100, "byte", None),
@@ -295,6 +300,7 @@ class PiFive(SoC):
 
         """Internal memories"""
         self.add_mem(WishboneROM(bootrom(), nullterm=False, endianness="little"), "bootrom")
+        self.add_mem(WishboneROM(blinky(), nullterm=False, endianness="little"), "blinky")
 
         self.add_mem(InstBuffer(size=8), "ibuffer")
         self.add_mgmt_periph(None, "ibuffer_mgmt", bus=self.ibuffer.debug_bus)
@@ -318,14 +324,15 @@ class PiFive(SoC):
         self.add_mgmt_periph(WishboneROM("Test SoC Mgmt Space"), "mgmt_ident")
 
         self.add_mgmt_periph(DebugProbe(probe_width=64, output_width=64), "debug_probe")
-        #self.comb += self.ram.flush_all.eq(self.debug_probe.flush_out)
+        self.comb += self.ram.flush_all.eq(self.debug_probe.flush_out)
 
         # TODO remove
-        self.comb += self.debug_probe.probe.eq(self.debug_probe.output[::-1])
+        #self.comb += self.debug_probe.probe.eq(self.debug_probe.output[::-1])
 
         """Temporary debug utilities (for testing only)"""
         tmp_clk = int(25e6)
         self.add_controller(WishboneDebugBus(platform.request("uart_user_dbg"), tmp_clk, baud=115200), "debugbus")
+        self.submodules.dbg_timeout = WishboneTimeout(self.debugbus.bus, timeout_cycles=10000, return_error=False)
         #self.comb += platform.request("led").eq(Mux(self.debugbus.ctr[0:9] == self.debugbus.ctr, self.debugbus.ctr >> 1, Constant(255)))
         self.submodules.mgmt_ctrl = WishboneDebugBus(platform.request("uart_mgmt_dbg"), tmp_clk, baud=115200)
         self.sync += self.mgmt_ctrl.bus.connect(mgmt_bus)
@@ -335,11 +342,14 @@ class PiFive(SoC):
         self.submodules.cpu = CPUWrapper()
         self.add_controller(None, "cpu_ibus", bus=self.cpu.instr_bus)
         self.add_controller(None, "cpu_dbus", bus=self.cpu.data_bus)
+        self.submodules.cpu_dbus_timeout = WishboneTimeout(self.cpu.data_bus, timeout_cycles=1000000, return_error=True)
         self.comb += self.cpu.init_pc.eq(self.wb_address("bootrom")[0])
 
         self.comb += self.cpu.stall_in.eq(self.debug_probe.stall_out)
         self.comb += self.debug_probe.stall_in.eq(self.cpu.stall_out)
         self.comb += self.cpu.cpu_reset.eq(self.debug_probe.reset_out)
+
+        self.comb += self.debug_probe.probe.eq(self.cpu.pc_out)
 
         """Generate the bus!"""
         main_mem_map, mgmt_mem_map = self.generate_bus()
@@ -380,18 +390,64 @@ def test_program2():
 
     return p.machine_code
 
+def immgen(p, reg, val, verbose=False):
+    subprocess.run(["make", "-C", "rtl/immgen", "immgen"], stdout=subprocess.DEVNULL)
+    out = subprocess.run(["rtl/immgen/immgen", str(val)], stdout=subprocess.PIPE).stdout
+    if verbose:
+        print(out)
+    low, high = out.decode("ascii").strip().split(",")
+    p.LUI(reg, high)
+    p.ADDI(reg, reg, low)
+
+"""
+    Simple boot ROM. Iterates through each possible memory location, looking for a specific "marker" instruction, jumps to it whenever found. This allows the CPU to stay in a holding pattern while the program is loaded into whichever memory must be used (if using persistent memory, this instruction can be placed at the start of the persistent memory)
+"""
 def bootrom():
     p = asm.Program()
-    CTR_MAX = 2000000
+    allowed_locations = [wb_address_map[x][0] for x in instr_memories if (x in wb_address_map)]
+    print(allowed_locations)
+    target_instr = 0x4D2F8F93 # addi x31 x31 1234
+
+    target_addr = "x5"
+    target_val  = "x6"
+    actual_val  = "x7"
+
+    immgen(p, target_val, target_instr)
+    p.LABEL("init")
+
+    for loc in allowed_locations:
+        immgen(p, target_addr, loc, verbose=False)
+        p.LW(actual_val, target_addr, 0)
+        p.BEQ(target_val, actual_val, "go")
+
+    p.JAL("x0", "init")
+
+    p.LABEL("go")
+    p.JALR("x0", target_addr, 0)
+
+    p.LABEL("stall")
+    p.JAL("x0", "stall")
+
+    """mc = p.machine_code
+    for i in range(0, len(mc), 4):
+        print(hex(mc[i] | (mc[i+1] << 8) | (mc[i+2] << 16) | (mc[i+3] << 24)))"""
+
+    return p.machine_code
+
+def blinky():
+    p = asm.Program()
+    CTR_MAX = 4000000
     led_addr = "x1"
     ctr = "x2"
     ctr_max = "x3"
     led_data = "x4"
 
     p.ADDI(led_data, "x0", 0b1010)
-    p.LUI(led_addr, -491520) # 0x8800_0000 >> 12
-    p.LUI(ctr_max, CTR_MAX >> 12)
-    p.ADDI(ctr_max, ctr_max, CTR_MAX & ((1 << 12) - 1))
+    #p.LUI(led_addr, -491520) # 0x8800_0000 >> 12
+    immgen(p, led_addr, 0x8800_0000)
+    immgen(p, ctr_max, CTR_MAX)
+    #p.LUI(ctr_max, CTR_MAX >> 12)
+    #p.ADDI(ctr_max, ctr_max, CTR_MAX & ((1 << 12) - 1))
 
     p.LABEL("start")
     p.XORI(led_data, led_data, 0b1111)

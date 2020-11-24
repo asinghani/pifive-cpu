@@ -30,8 +30,6 @@ class DebugProbe(Module):
         probes = Array(self.probe[i:i+32] for i in range(0, probe_width, 32))
         outputs = Array(_outputs)
 
-        print("NUM OUTPUTS", _outputs, len(outputs))
-
         enable_entry = Signal(32, reset=0)
         enabled = enable_entry == Constant(enable_code)
 

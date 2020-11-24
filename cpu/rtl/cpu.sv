@@ -18,6 +18,8 @@ module cpu #(
     input wire [31:0] i_init_pc,
     output wire o_stall_out,
 
+    output wire [31:0] o_pc_out,
+
     input wire i_rst,
     input wire i_clk
 );
@@ -42,6 +44,8 @@ wire [31:0] raw_instr;
 reg [31:0] pc;
 reg [31:0] next_pc;
 reg first;
+
+assign o_pc_out = pc;
 
 wire [31:0] data_addr;
 wire [31:0] data_rdata;

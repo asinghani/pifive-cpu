@@ -10,6 +10,8 @@ class CPUWrapper(Module):
         self.stall_out = Signal()
         self.init_pc = Signal(32)
 
+        self.pc_out = Signal(32)
+
         self.cpu_reset = Signal(reset=0)
 
         self.sync += [
@@ -43,6 +45,8 @@ class CPUWrapper(Module):
             i_i_stall_in=self.stall_in,
             i_i_init_pc=self.init_pc,
             o_o_stall_out=self.stall_out,
+
+            o_o_pc_out=self.pc_out,
 
             i_i_clk=ClockSignal(),
             i_i_rst=ResetSignal() | self.cpu_reset,
