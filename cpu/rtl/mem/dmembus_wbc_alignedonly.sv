@@ -27,7 +27,7 @@ module dmembus_wbc_alignedonly (
 
 assign wb.cyc = wb.stb;
 wire i_req = i_we || i_re;
-reg [2:0] r_width; // {zeroextend[0:0], width[1:0]}
+reg [4:0] r_width; // {zeroextend[0:0], width[1:0], addr[1:0]}
 
 reg addr_unaligned;
 wire unaligned = i_req && addr_unaligned;
@@ -54,7 +54,7 @@ always_ff @(posedge i_clk) begin
             o_data <= aligned_recv_data;
         end
         if (i_req && ~unaligned) begin
-            r_width <= {i_zeroextend, i_width};
+            r_width <= {i_zeroextend, i_width, i_addr[1:0]};
             wb.stb <= 1;
             wb.addr <= {i_addr[31:2], 2'b00};
             wb.we <= i_we;
@@ -109,37 +109,37 @@ always_comb begin
     // Use registered width because there may be new req on response cycle
     ext = 0;
     aligned_recv_data = wb.data_rd;
-    case({r_width[1:0], wb.addr[1:0]}) inside
+    case(r_width[3:0]) inside
         // Width, Addr
-        // zero-extend = r_width[2]
+        // zero-extend = r_width[4]
 
         {2'b01, 2'b00}: begin
-            ext = r_width[2] ? 0 : wb.data_rd[7];
+            ext = r_width[4] ? 0 : wb.data_rd[7];
             aligned_recv_data = {{24{ext}}, wb.data_rd[7:0]};
         end
 
         {2'b01, 2'b01}: begin
-            ext = r_width[2] ? 0 : wb.data_rd[15];
+            ext = r_width[4] ? 0 : wb.data_rd[15];
             aligned_recv_data = {{24{ext}}, wb.data_rd[15:8]};
         end
 
         {2'b01, 2'b10}: begin
-            ext = r_width[2] ? 0 : wb.data_rd[23];
+            ext = r_width[4] ? 0 : wb.data_rd[23];
             aligned_recv_data = {{24{ext}}, wb.data_rd[23:16]};
         end
 
         {2'b01, 2'b11}: begin
-            ext = r_width[2] ? 0 : wb.data_rd[31];
+            ext = r_width[4] ? 0 : wb.data_rd[31];
             aligned_recv_data = {{24{ext}}, wb.data_rd[31:24]};
         end
 
         {2'b10, 2'b00}: begin
-            ext = r_width[2] ? 0 : wb.data_rd[15];
+            ext = r_width[4] ? 0 : wb.data_rd[15];
             aligned_recv_data = {{16{ext}}, wb.data_rd[15:0]};
         end
 
         {2'b10, 2'b10}: begin
-            ext = r_width[2] ? 0 : wb.data_rd[31];
+            ext = r_width[4] ? 0 : wb.data_rd[31];
             aligned_recv_data = {{16{ext}}, wb.data_rd[31:16]};
         end
 

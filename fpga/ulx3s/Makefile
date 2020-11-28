@@ -1,8 +1,6 @@
 VERILOG_TOP=top_ulx3s
 CONSTRAINTS_FILE=constraints.lpf
-CLK_FREQ=25 #Mhz
-
-REMOTE_MACHINE=anish@anish-MBP.local
+CLK_FREQ=25 #MHz
 
 YOSYS_FLAGS=
 NEXTPNR_FLAGS=--85k
@@ -25,13 +23,14 @@ all: ecppack
 .PHONY: build/top_generic.v
 build/top_generic.v:
 	mkdir -p build
-	make -C ../../soc-fpga build/top.v
-	cp ../../soc-fpga/build/top.v build/top_generic.v
-	cp ../../soc-fpga/build/*.init build/
+	make -C ../../soc build/top.v
+	cp ../../soc/build/top.v build/top_generic.v
+	#cp ../../soc/build/*.init build/
 
 # Generate PLL
 .PHONY: build/pll.v
 build/pll.v:
+	mkdir -p build
 	ecppll -i 25 -o $(CLK_FREQ) -f build/pll.v
 
 # Run sv2v conversion

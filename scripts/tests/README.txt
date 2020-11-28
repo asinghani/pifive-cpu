@@ -1,0 +1,1 @@
+Test scripts for various cores to be tested on hardware using wbdbgbus (these are designed to be used with very specific hardware setups and the preferred option is to compile the test C programs that are in the `software/` directory).

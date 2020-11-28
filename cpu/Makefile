@@ -18,7 +18,6 @@ clean:
 	-rm -r build/
 	-rm -r sim_build/
 	-rm -r __pycache__/
-	make -C software/bootloader clean
 
 build/top.v: $(VERILOG_SOURCES)
 	mkdir -p build
