@@ -1,4 +1,4 @@
-from simpleriscv import asm
+from third_party import assembler as asm
 from bitstring import Bits
 
 # Emulate the li pseudoinstruction

@@ -43,7 +43,7 @@ build/top_ulx3s.v: $(VERILOG_SOURCES) build/pll.v build/top_generic.v
 yosys: $(JSON_FILE)
 $(JSON_FILE): build/top_ulx3s.v
 	mkdir -p build
-	yosys $(YOSYS_FLAGS) -p 'read_verilog -sv build/top_ulx3s.v; synth_ecp5 -json $(JSON_FILE) -top $(VERILOG_TOP)' > build/yosys.log
+	yosys $(YOSYS_FLAGS) -p 'read_verilog -sv build/top_ulx3s.v; synth_ecp5 -abc2 -retime -json $(JSON_FILE) -top $(VERILOG_TOP)' > build/yosys.log
 	@-grep '^Latch inferred' build/yosys.log && echo '' || true # Check for latches
 
 # Run place-and-route

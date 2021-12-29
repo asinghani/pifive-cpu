@@ -22,8 +22,8 @@ from bootloader import bootrom
 # 0x0000_XXXX =   64 KiB
 # 0x0000_0XXX =    4 KiB
 
-DMEM_SIZE = 2**17
-IMEM_SIZE = 2**17
+DMEM_SIZE = 2**14
+IMEM_SIZE = 2**14
 
 wb_address_map = {
     # Includes everything on the shared (slower) interconnect
@@ -288,8 +288,8 @@ class PiFive(SoC):
         self.add_periph(spi.SPI(spi0_pads), "spi0")
         self.add_periph(spi.SPI(spi1_pads), "spi1")
 
-        self.add_periph(uart.UART(uart0_pads, fifo_depth=128), "uart0")
-        self.add_periph(uart.UART(uart1_pads, fifo_depth=128), "uart1")
+        self.add_periph(uart.UART(uart0_pads, fifo_depth=8), "uart0")
+        self.add_periph(uart.UART(uart1_pads, fifo_depth=8), "uart1")
 
         self.add_periph(i2c.I2C(i2c0_pads, fifo_depth=8), "i2c0")
 
@@ -330,8 +330,8 @@ class PiFive(SoC):
         self.add_periph(timer.UptimeTimer(), "uptime")
         self.add_periph(timer.Timer(), "timer0")
         self.add_periph(timer.Timer(), "timer1")
-        self.add_periph(timer.Timer(), "timer2")
-        self.add_periph(timer.Timer(), "timer3")
+        #self.add_periph(timer.Timer(), "timer2")
+        #self.add_periph(timer.Timer(), "timer3")
 
         """Debug-related peripherals"""
         # Debug region is not necessary in final builds - it is primarily intended for inspecting and debugging CPU internals when the main system bus is congested or blocked
